@@ -65,6 +65,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@SuppressWarnings("deprecation")
 public class MetaStoreUtils {
 
   protected static final Logger log = Logger.get("hive.log");
@@ -1111,6 +1112,7 @@ public class MetaStoreUtils {
     String[] listenerImpls = listenerImplList.split(",");
     for (String listenerImpl : listenerImpls) {
       try {
+        @SuppressWarnings("unchecked")
         T listener = (T) Class.forName(
             listenerImpl.trim(), true, JavaUtils.getClassLoader()).getConstructor(
                 Configuration.class).newInstance(conf);

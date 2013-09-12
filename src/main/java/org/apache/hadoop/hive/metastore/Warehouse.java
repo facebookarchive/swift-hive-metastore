@@ -83,7 +83,8 @@ public class Warehouse {
     String handlerClassStr = HiveConf.getVar(conf,
         HiveConf.ConfVars.HIVE_METASTORE_FS_HANDLER_CLS);
     try {
-      Class<? extends MetaStoreFS> handlerClass = (Class<? extends MetaStoreFS>) Class
+      @SuppressWarnings("unchecked")
+    Class<? extends MetaStoreFS> handlerClass = (Class<? extends MetaStoreFS>) Class
           .forName(handlerClassStr, true, JavaUtils.getClassLoader());
       MetaStoreFS handler = (MetaStoreFS) ReflectionUtils.newInstance(
           handlerClass, conf);

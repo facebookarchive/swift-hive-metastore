@@ -45,7 +45,6 @@ import org.apache.hadoop.hive.metastore.api.UnknownPartitionException;
 import org.apache.hadoop.hive.metastore.api.UnknownTableException;
 import org.apache.thrift.TException;
 
-import java.io.Closeable;
 import java.util.List;
 import java.util.Map;
 

@@ -50,9 +50,9 @@
   <developers/>
 
   <properties>
-    <dep.airlift.version>0.80-SNAPSHOT</dep.airlift.version>
-    <dep.swift.version>0.9.0-SNAPSHOT</dep.swift.version>
-    <dep.nifty.version>0.9.0-SNAPSHOT</dep.nifty.version>
+    <dep.airlift.version>0.79</dep.airlift.version>
+    <dep.swift.version>0.9.0</dep.swift.version>
+    <dep.nifty.version>0.9.0</dep.nifty.version>
     <dep.hive.version>0.11.0</dep.hive.version>
   </properties>
 
