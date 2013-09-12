@@ -32,7 +32,7 @@
 
   <groupId>com.facebook</groupId>
   <artifactId>swift-hive-metastore</artifactId>
-  <version>1.0</version>
+  <version>1.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>swift-hive-metastore</name>
@@ -44,7 +44,7 @@
   <scm>
     <connection>scm:git:git://github.com/facebook/swift-hive-metastore.git</connection>
     <url>https://github.com/facebook/swift-hive-metastore</url>
-    <tag>swift-hive-metastore-1.0</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <developers />
