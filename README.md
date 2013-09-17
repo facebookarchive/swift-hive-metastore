@@ -5,10 +5,12 @@ A swift based client for the Hive Metastore.
 
 Goal of this project is to replace 
 
+```xml
 <dependency>
     <groupId>org.apache.hive</groupId>
     <artifactId>hive-metastore</artifactId>
 </dependency>
+```
 
 as a client library for users of the Hive metastore.
 
