@@ -1,9 +1,10 @@
 swift-hive-metastore
 ====================
 
-A swift based client for the Hive Metastore.
+A swift based client for the Hive Metastore. Swift is an annotation based implementation for the Thrift protocol, available
+from https://github.com/facebook/swift.
 
-Goal of this project is to replace 
+Goal of this project is to replace
 
 ```xml
 <dependency>
@@ -21,12 +22,15 @@ clients.
 The library is supposed to be an API drop-in, it also supports a number of
 helper APIs from the hive-metastore dependency:
 
-* org.apache.hadoop.hive.metastore.MetaStoreUtils
-* org.apache.hadoop.hive.metastore.api.hive_metastoreConstants
-* org.apache.hadoop.hive.metastore.TableType
-* org.apache.hadoop.hive.metastore.MetaStoreFS
-* org.apache.hadoop.hive.metastore.ProtectMode
-* org.apache.hadoop.hive.metastore.Warehouse
+* `org.apache.hadoop.hive.metastore.MetaStoreUtils`
+* `org.apache.hadoop.hive.metastore.api.hive_metastoreConstants`
+* `org.apache.hadoop.hive.metastore.TableType`
+* `org.apache.hadoop.hive.metastore.MetaStoreFS`
+* `org.apache.hadoop.hive.metastore.ProtectMode`
+* `org.apache.hadoop.hive.metastore.Warehouse`
+
+All client pieces that are different from the Apache Hive Metastore are located in the `com.facebook.hive.metastore` package.
+
 
 Usage
 -----
@@ -58,6 +62,25 @@ try (ThriftClientManager clientManager = new ThriftClientManager()) {
 
     }
 }
+```
+
+Using Guice
+-----------
+
+A Guice module is available that allows integration of the client using dependecy injection with Googl Guice. 
+This requires the `ThriftClientModule` and the `ThriftCodecModule` from swift.
+
+```java
+Injector inj = Guice.createInjector(Stage.PRODUCTION, 
+                                    new HiveMetastoreClientModule(),
+                                    new ThriftClientModule(),
+                                    new ThriftCodecModule());
+
+HiveMetastoreProvider provider = inj.getInstance(HiveMetastoreProvider.class);
+HiveMetastore metastore = metastoreProvider.get();
+
+Table table = metastore.getTable("hello", "world");
+...
 ```
 
 Known problems
