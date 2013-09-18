@@ -18,6 +18,7 @@ package com.facebook.hive.metastore;
 import com.facebook.hive.metastore.api.ThriftHiveMetastore;
 
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException;
+import org.apache.hadoop.hive.metastore.api.ColumnStatistics;
 import org.apache.hadoop.hive.metastore.api.ConfigValSecurityException;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.EnvironmentContext;
@@ -487,6 +488,30 @@ public abstract class AbstractLegacyMetastore implements ThriftHiveMetastore
 
     @Override
     public List<String> get_index_names(String db_name, String tbl_name, short max_indexes) throws MetaException, TException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean update_table_column_statistics(ColumnStatistics stats_obj) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, TException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean update_partition_column_statistics(ColumnStatistics stats_obj) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, TException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ColumnStatistics get_table_column_statistics(String db_name, String tbl_name, String col_name) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ColumnStatistics get_partition_column_statistics(String db_name, String tbl_name, String part_name, String col_name) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException
     {
         throw new UnsupportedOperationException();
     }

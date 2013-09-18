@@ -27,7 +27,7 @@
 ##
 ## Taken from git@github.com:apache/hive
 ##  git-svn-id: https://svn.apache.org/repos/asf/hive/trunk@1520202
-## 
+##
 ## All changes for swift-hive-metastore are prefixed by SWIFT-HIVE-METASTORE
 ##
 ## SWIFT-HIVE-METASTORE
@@ -88,7 +88,7 @@ const string HIVE_FILTER_FIELD_PARAMS = "hive_filter_field_params__"
 const string HIVE_FILTER_FIELD_LAST_ACCESS = "hive_filter_field_last_access__"
 
 enum PartitionEventType {
-  LOAD_DONE = 1,  
+  LOAD_DONE = 1,
 }
 
 struct HiveObjectRef{
@@ -160,7 +160,7 @@ struct Order {
 ## applied to open source Hive, because it breaks wire compatibility with the existing
 ## metastores...
 ##
-## 
+##
 ## // Workaround for HIVE-4322
 ## struct SkewedValueList {
 ##   1: list<string> skewedValueList
@@ -310,41 +310,32 @@ struct BinaryColumnStatsData {
 3: required i64 numNulls
 }
 
-##
-## SWIFT-HIVE-METASTORE
-##
-##
-## Swift does not support unions yet.
-##
-## union ColumnStatisticsData {
-## 1: BooleanColumnStatsData booleanStats,
-## 2: LongColumnStatsData longStats,
-## 3: DoubleColumnStatsData doubleStats,
-## 4: StringColumnStatsData stringStats,
-## 5: BinaryColumnStatsData binaryStats
-## }
-##
-## struct ColumnStatisticsObj {
-## 1: required string colName,
-## 2: required string colType,
-## 3: required ColumnStatisticsData statsData
-## }
-##
-## struct ColumnStatisticsDesc {
-## 1: required bool isTblLevel,
-## 2: required string dbName,
-## 3: required string tableName,
-## 4: optional string partName,
-## 5: optional i64 lastAnalyzed
-## }
-##
-## struct ColumnStatistics {
-## 1: required ColumnStatisticsDesc statsDesc,
-## 2: required list<ColumnStatisticsObj> statsObj;
-## }
-##
-## SWIFT-HIVE-METASTORE
-##
+union ColumnStatisticsData {
+1: BooleanColumnStatsData booleanStats,
+2: LongColumnStatsData longStats,
+3: DoubleColumnStatsData doubleStats,
+4: StringColumnStatsData stringStats,
+5: BinaryColumnStatsData binaryStats
+}
+
+struct ColumnStatisticsObj {
+1: required string colName,
+2: required string colType,
+3: required ColumnStatisticsData statsData
+}
+
+struct ColumnStatisticsDesc {
+1: required bool isTblLevel,
+2: required string dbName,
+3: required string tableName,
+4: optional string partName,
+5: optional i64 lastAnalyzed
+}
+
+struct ColumnStatistics {
+1: required ColumnStatisticsDesc statsDesc,
+2: required list<ColumnStatisticsObj> statsObj;
+}
 
 // schema of the table/query results etc.
 struct Schema {
@@ -427,7 +418,7 @@ service ThriftHiveMetastore
   list<string> get_databases(1:string pattern) throws(1:MetaException o1)
   list<string> get_all_databases() throws(1:MetaException o1)
   void alter_database(1:string dbname, 2:Database db) throws(1:MetaException o1, 2:NoSuchObjectException o2)
-  
+
   // returns the type with given name (make seperate calls for the dependent types if needed)
   Type get_type(1:string name)  throws(1:MetaException o1, 2:NoSuchObjectException o2)
   bool create_type(1:Type type) throws(1:AlreadyExistsException o1, 2:InvalidObjectException o2, 3:MetaException o3)
@@ -514,7 +505,7 @@ service ThriftHiveMetastore
                        throws (1:InvalidOperationException o1, 2:MetaException o2)
   void alter_table_with_environment_context(1:string dbname, 2:string tbl_name,
       3:Table new_tbl, 4:EnvironmentContext environment_context)
-      throws (1:InvalidOperationException o1, 2:MetaException o2) 
+      throws (1:InvalidOperationException o1, 2:MetaException o2)
   // the following applies to only tables that have partitions
   // * See notes on DDL_TIME
   Partition add_partition(1:Partition new_part)
@@ -562,7 +553,7 @@ service ThriftHiveMetastore
 ## SWIFT-HIVE-METASTORE
 ##
 
-  Partition get_partition_with_auth(1:string db_name, 2:string tbl_name, 3:list<string> part_vals, 
+  Partition get_partition_with_auth(1:string db_name, 2:string tbl_name, 3:list<string> part_vals,
       4: string user_name, 5: list<string> group_names) throws(1:MetaException o1, 2:NoSuchObjectException o2)
 
   Partition get_partition_by_name(1:string db_name 2:string tbl_name, 3:string part_name)
@@ -572,25 +563,25 @@ service ThriftHiveMetastore
   // If max parts is given then it will return only that many.
   list<Partition> get_partitions(1:string db_name, 2:string tbl_name, 3:i16 max_parts=-1)
                        throws(1:NoSuchObjectException o1, 2:MetaException o2)
-  list<Partition> get_partitions_with_auth(1:string db_name, 2:string tbl_name, 3:i16 max_parts=-1, 
-     4: string user_name, 5: list<string> group_names) throws(1:NoSuchObjectException o1, 2:MetaException o2)                       
+  list<Partition> get_partitions_with_auth(1:string db_name, 2:string tbl_name, 3:i16 max_parts=-1,
+     4: string user_name, 5: list<string> group_names) throws(1:NoSuchObjectException o1, 2:MetaException o2)
 
   list<string> get_partition_names(1:string db_name, 2:string tbl_name, 3:i16 max_parts=-1)
                        throws(1:MetaException o2)
-                       
-  // get_partition*_ps methods allow filtering by a partial partition specification, 
-  // as needed for dynamic partitions. The values that are not restricted should 
-  // be empty strings. Nulls were considered (instead of "") but caused errors in 
+
+  // get_partition*_ps methods allow filtering by a partial partition specification,
+  // as needed for dynamic partitions. The values that are not restricted should
+  // be empty strings. Nulls were considered (instead of "") but caused errors in
   // generated Python code. The size of part_vals may be smaller than the
   // number of partition columns - the unspecified values are considered the same
   // as "".
-  list<Partition> get_partitions_ps(1:string db_name 2:string tbl_name 
+  list<Partition> get_partitions_ps(1:string db_name 2:string tbl_name
   	3:list<string> part_vals, 4:i16 max_parts=-1)
                        throws(1:MetaException o1, 2:NoSuchObjectException o2)
-  list<Partition> get_partitions_ps_with_auth(1:string db_name, 2:string tbl_name, 3:list<string> part_vals, 4:i16 max_parts=-1, 
-     5: string user_name, 6: list<string> group_names) throws(1:NoSuchObjectException o1, 2:MetaException o2)                       
-  
-  list<string> get_partition_names_ps(1:string db_name, 
+  list<Partition> get_partitions_ps_with_auth(1:string db_name, 2:string tbl_name, 3:list<string> part_vals, 4:i16 max_parts=-1,
+     5: string user_name, 6: list<string> group_names) throws(1:NoSuchObjectException o1, 2:MetaException o2)
+
+  list<string> get_partition_names_ps(1:string db_name,
   	2:string tbl_name, 3:list<string> part_vals, 4:i16 max_parts=-1)
   	                   throws(1:MetaException o1, 2:NoSuchObjectException o2)
 
@@ -608,8 +599,8 @@ service ThriftHiveMetastore
   // * See notes on DDL_TIME
   void alter_partition(1:string db_name, 2:string tbl_name, 3:Partition new_part)
                        throws (1:InvalidOperationException o1, 2:MetaException o2)
-                       
-  // change a list of partitions. All partitions are altered atomically and all 
+
+  // change a list of partitions. All partitions are altered atomically and all
   // prehooks are fired together followed by all post hooks
   void alter_partitions(1:string db_name, 2:string tbl_name, 3:list<Partition> new_parts)
                        throws (1:InvalidOperationException o1, 2:MetaException o2)
@@ -636,7 +627,7 @@ service ThriftHiveMetastore
   // thrown.
   string get_config_value(1:string name, 2:string defaultValue)
                           throws(1:ConfigValSecurityException o1)
-                          
+
   // converts a partition name into a partition values array
   list<string> partition_name_to_vals(1: string part_name)
                           throws(1: MetaException o1)
@@ -644,23 +635,23 @@ service ThriftHiveMetastore
   // the partition cols to the values)
   map<string, string> partition_name_to_spec(1: string part_name)
                           throws(1: MetaException o1)
-  
+
   void markPartitionForEvent(1:string db_name, 2:string tbl_name, 3:map<string,string> part_vals,
-                  4:PartitionEventType eventType) throws (1: MetaException o1, 2: NoSuchObjectException o2, 
+                  4:PartitionEventType eventType) throws (1: MetaException o1, 2: NoSuchObjectException o2,
                   3: UnknownDBException o3, 4: UnknownTableException o4, 5: UnknownPartitionException o5,
-                  6: InvalidPartitionException o6) 
-  bool isPartitionMarkedForEvent(1:string db_name, 2:string tbl_name, 3:map<string,string> part_vals, 
+                  6: InvalidPartitionException o6)
+  bool isPartitionMarkedForEvent(1:string db_name, 2:string tbl_name, 3:map<string,string> part_vals,
                   4: PartitionEventType eventType) throws (1: MetaException o1, 2:NoSuchObjectException o2,
                   3: UnknownDBException o3, 4: UnknownTableException o4, 5: UnknownPartitionException o5,
-                  6: InvalidPartitionException o6) 
-                         
+                  6: InvalidPartitionException o6)
+
   //index
   Index add_index(1:Index new_index, 2: Table index_table)
                        throws(1:InvalidObjectException o1, 2:AlreadyExistsException o2, 3:MetaException o3)
   void alter_index(1:string dbname, 2:string base_tbl_name, 3:string idx_name, 4:Index new_idx)
                        throws (1:InvalidOperationException o1, 2:MetaException o2)
   bool drop_index_by_name(1:string db_name, 2:string tbl_name, 3:string index_name, 4:bool deleteData)
-                       throws(1:NoSuchObjectException o1, 2:MetaException o2) 
+                       throws(1:NoSuchObjectException o1, 2:MetaException o2)
   Index get_index_by_name(1:string db_name 2:string tbl_name, 3:string index_name)
                        throws(1:MetaException o1, 2:NoSuchObjectException o2)
 
@@ -670,35 +661,24 @@ service ThriftHiveMetastore
                        throws(1:MetaException o2)
 
   // column statistics interfaces
+  // update APIs persist the column statistics object(s) that are passed in. If statistics already
+  // exists for one or more columns, the existing statistics will be overwritten. The update APIs
+  // validate that the dbName, tableName, partName, colName[] passed in as part of the ColumnStatistics
+  // struct are valid, throws InvalidInputException/NoSuchObjectException if found to be invalid
+  bool update_table_column_statistics(1:ColumnStatistics stats_obj) throws (1:NoSuchObjectException o1,
+              2:InvalidObjectException o2, 3:MetaException o3, 4:InvalidInputException o4)
+  bool update_partition_column_statistics(1:ColumnStatistics stats_obj) throws (1:NoSuchObjectException o1,
+              2:InvalidObjectException o2, 3:MetaException o3, 4:InvalidInputException o4)
 
-##
-## SWIFT-HIVE-METASTORE
-##
-##
-## Comment out API calls that require the ColumnStatistics union
-##
-##   // update APIs persist the column statistics object(s) that are passed in. If statistics already
-##   // exists for one or more columns, the existing statistics will be overwritten. The update APIs
-##   // validate that the dbName, tableName, partName, colName[] passed in as part of the ColumnStatistics
-##   // struct are valid, throws InvalidInputException/NoSuchObjectException if found to be invalid
-##   bool update_table_column_statistics(1:ColumnStatistics stats_obj) throws (1:NoSuchObjectException o1,
-##               2:InvalidObjectException o2, 3:MetaException o3, 4:InvalidInputException o4)
-##   bool update_partition_column_statistics(1:ColumnStatistics stats_obj) throws (1:NoSuchObjectException o1,
-##               2:InvalidObjectException o2, 3:MetaException o3, 4:InvalidInputException o4)
-## 
-##   // get APIs return the column statistics corresponding to db_name, tbl_name, [part_name], col_name if
-##   // such statistics exists. If the required statistics doesn't exist, get APIs throw NoSuchObjectException
-##   // For instance, if get_table_column_statistics is called on a partitioned table for which only
-##   // partition level column stats exist, get_table_column_statistics will throw NoSuchObjectException
-##   ColumnStatistics get_table_column_statistics(1:string db_name, 2:string tbl_name, 3:string col_name) throws
-##               (1:NoSuchObjectException o1, 2:MetaException o2, 3:InvalidInputException o3, 4:InvalidObjectException o4)
-##   ColumnStatistics get_partition_column_statistics(1:string db_name, 2:string tbl_name, 3:string part_name,
-##                4:string col_name) throws (1:NoSuchObjectException o1, 2:MetaException o2,
-##                3:InvalidInputException o3, 4:InvalidObjectException o4)
-## 
-##
-## SWIFT-HIVE-METASTORE
-##
+  // get APIs return the column statistics corresponding to db_name, tbl_name, [part_name], col_name if
+  // such statistics exists. If the required statistics doesn't exist, get APIs throw NoSuchObjectException
+  // For instance, if get_table_column_statistics is called on a partitioned table for which only
+  // partition level column stats exist, get_table_column_statistics will throw NoSuchObjectException
+  ColumnStatistics get_table_column_statistics(1:string db_name, 2:string tbl_name, 3:string col_name) throws
+              (1:NoSuchObjectException o1, 2:MetaException o2, 3:InvalidInputException o3, 4:InvalidObjectException o4)
+  ColumnStatistics get_partition_column_statistics(1:string db_name, 2:string tbl_name, 3:string part_name,
+               4:string col_name) throws (1:NoSuchObjectException o1, 2:MetaException o2,
+               3:InvalidInputException o3, 4:InvalidObjectException o4)
 
   // delete APIs attempt to delete column statistics, if found, associated with a given db_name, tbl_name, [part_name]
   // and col_name. If the delete API doesn't find the statistics record in the metastore, throws NoSuchObjectException
@@ -711,30 +691,30 @@ service ThriftHiveMetastore
                4:InvalidInputException o4)
 
   //authorization privileges
-                       
+
   bool create_role(1:Role role) throws(1:MetaException o1)
   bool drop_role(1:string role_name) throws(1:MetaException o1)
   list<string> get_role_names() throws(1:MetaException o1)
-  bool grant_role(1:string role_name, 2:string principal_name, 3:PrincipalType principal_type, 
+  bool grant_role(1:string role_name, 2:string principal_name, 3:PrincipalType principal_type,
     4:string grantor, 5:PrincipalType grantorType, 6:bool grant_option) throws(1:MetaException o1)
-  bool revoke_role(1:string role_name, 2:string principal_name, 3:PrincipalType principal_type) 
+  bool revoke_role(1:string role_name, 2:string principal_name, 3:PrincipalType principal_type)
                         throws(1:MetaException o1)
   list<Role> list_roles(1:string principal_name, 2:PrincipalType principal_type) throws(1:MetaException o1)
 
-  PrincipalPrivilegeSet get_privilege_set(1:HiveObjectRef hiveObject, 2:string user_name, 
+  PrincipalPrivilegeSet get_privilege_set(1:HiveObjectRef hiveObject, 2:string user_name,
     3: list<string> group_names) throws(1:MetaException o1)
-  list<HiveObjectPrivilege> list_privileges(1:string principal_name, 2:PrincipalType principal_type, 
+  list<HiveObjectPrivilege> list_privileges(1:string principal_name, 2:PrincipalType principal_type,
     3: HiveObjectRef hiveObject) throws(1:MetaException o1)
-  
+
   bool grant_privileges(1:PrivilegeBag privileges) throws(1:MetaException o1)
   bool revoke_privileges(1:PrivilegeBag privileges) throws(1:MetaException o1)
-  
+
   // this is used by metastore client to send UGI information to metastore server immediately
-  // after setting up a connection. 
+  // after setting up a connection.
   list<string> set_ugi(1:string user_name, 2:list<string> group_names) throws (1:MetaException o1)
 
   //Authentication (delegation token) interfaces
-  
+
   // get metastore server delegation token for use from the map/reduce tasks to authenticate
   // to metastore server
   string get_delegation_token(1:string token_owner, 2:string renewer_kerberos_principal_name)

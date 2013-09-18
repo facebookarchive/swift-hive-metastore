@@ -18,6 +18,7 @@ package com.facebook.hive.metastore.api;
 import com.facebook.hive.metastore.client.HiveMetastore;
 
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException;
+import org.apache.hadoop.hive.metastore.api.ColumnStatistics;
 import org.apache.hadoop.hive.metastore.api.ConfigValSecurityException;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.EnvironmentContext;
@@ -206,17 +207,17 @@ public interface ThriftHiveMetastore extends Closeable
 
     List<String> get_index_names(String db_name, String tbl_name, short max_indexes) throws MetaException, TException;
 
-    // boolean update_table_column_statistics(ColumnStatistics stats_obj) throws NoSuchObjectException,
-    // InvalidObjectException, MetaException, InvalidInputException, TException;
-    //
-    // boolean update_partition_column_statistics(ColumnStatistics stats_obj) throws NoSuchObjectException,
-    // InvalidObjectException, MetaException, InvalidInputException, TException;
-    //
-    // ColumnStatistics get_table_column_statistics(String db_name, String tbl_name, String col_name) throws
-    // NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException;
-    //
-    // ColumnStatistics get_partition_column_statistics(String db_name, String tbl_name, String part_name, String col_name)
-    // throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException;
+    boolean update_table_column_statistics(ColumnStatistics stats_obj) throws NoSuchObjectException,
+        InvalidObjectException, MetaException, InvalidInputException, TException;
+
+    boolean update_partition_column_statistics(ColumnStatistics stats_obj) throws NoSuchObjectException,
+        InvalidObjectException, MetaException, InvalidInputException, TException;
+
+    ColumnStatistics get_table_column_statistics(String db_name, String tbl_name, String col_name) throws
+        NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException;
+
+    ColumnStatistics get_partition_column_statistics(String db_name, String tbl_name, String part_name, String col_name)
+        throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException;
 
     boolean delete_partition_column_statistics(String db_name, String tbl_name, String part_name, String col_name) throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException, TException;
 
@@ -704,6 +705,30 @@ public interface ThriftHiveMetastore extends Closeable
         public List<String> get_index_names(String db_name, String tbl_name, short max_indexes) throws MetaException, TException
         {
             return delegate.getIndexNames(db_name, tbl_name, max_indexes);
+        }
+
+        @Override
+        public boolean update_table_column_statistics(ColumnStatistics stats_obj) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, TException
+        {
+            return delegate.updateTableColumnStatistics(stats_obj);
+        }
+
+        @Override
+        public boolean update_partition_column_statistics(ColumnStatistics stats_obj) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, TException
+        {
+            return delegate.updatePartitionColumnStatistics(stats_obj);
+        }
+
+        @Override
+        public ColumnStatistics get_table_column_statistics(String db_name, String tbl_name, String col_name) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException
+        {
+            return delegate.getTableColumnStatistics(db_name, tbl_name, col_name);
+        }
+
+        @Override
+        public ColumnStatistics get_partition_column_statistics(String db_name, String tbl_name, String part_name, String col_name) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException
+        {
+            return delegate.getPartitionColumnStatistics(db_name, tbl_name, part_name, col_name);
         }
 
         @Override

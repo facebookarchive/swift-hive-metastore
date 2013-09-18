@@ -30,7 +30,7 @@ namespace java org.apache.hadoop.hive.metastore.api
 /**
  * Thrown when the table link specification is invalid:
  *   - table link to the same database,
- *   - table link not pointing to a managed or external table. 
+ *   - table link not pointing to a managed or external table.
  */
 exception InvalidTableLinkDescriptionException {
   1: string message
@@ -118,11 +118,11 @@ service FacebookHiveMetastore extends hive_metastore.ThriftHiveMetastore {
                                  4:string partitionName)
        throws (1:hive_metastore.NoSuchObjectException o1,
                2:hive_metastore.MetaException o2)
-  
-  // Gets a new partition object with the given parameters. Similar to append_partition, 
+
+  // Gets a new partition object with the given parameters. Similar to append_partition,
   // but does not add the partition to metastore
   // It only works for tables; does not work for other objects like views.
-  // The table is fetched from the metastore using the db name and the table name. 
+  // The table is fetched from the metastore using the db name and the table name.
   // However, the actual partition is not fetched from the metastore.
   // It does not matter whether the partition exists or not.
   // The partition values are used to construct a new partition.

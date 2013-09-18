@@ -702,6 +702,55 @@ public interface ThriftHiveMetastore extends Closeable
                                @ThriftField(value = 3, name = "max_indexes") final short maxIndexes
                     ) throws MetaException, org.apache.thrift.TException;
 
+    @ThriftMethod(value = "update_table_column_statistics",
+                    exception = {
+                                    @ThriftException(type = NoSuchObjectException.class, id = 1),
+                                    @ThriftException(type = InvalidObjectException.class, id = 2),
+                                    @ThriftException(type = MetaException.class, id = 3),
+                                    @ThriftException(type = InvalidInputException.class, id = 4)
+                    })
+    boolean updateTableColumnStatistics(
+                                        @ThriftField(value = 1, name = "stats_obj") final ColumnStatistics statsObj
+                    ) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, org.apache.thrift.TException;
+
+    @ThriftMethod(value = "update_partition_column_statistics",
+                    exception = {
+                                    @ThriftException(type = NoSuchObjectException.class, id = 1),
+                                    @ThriftException(type = InvalidObjectException.class, id = 2),
+                                    @ThriftException(type = MetaException.class, id = 3),
+                                    @ThriftException(type = InvalidInputException.class, id = 4)
+                    })
+    boolean updatePartitionColumnStatistics(
+                                            @ThriftField(value = 1, name = "stats_obj") final ColumnStatistics statsObj
+                    ) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, org.apache.thrift.TException;
+
+    @ThriftMethod(value = "get_table_column_statistics",
+                    exception = {
+                                    @ThriftException(type = NoSuchObjectException.class, id = 1),
+                                    @ThriftException(type = MetaException.class, id = 2),
+                                    @ThriftException(type = InvalidInputException.class, id = 3),
+                                    @ThriftException(type = InvalidObjectException.class, id = 4)
+                    })
+    ColumnStatistics getTableColumnStatistics(
+                                              @ThriftField(value = 1, name = "db_name") final String dbName,
+                                              @ThriftField(value = 2, name = "tbl_name") final String tblName,
+                                              @ThriftField(value = 3, name = "col_name") final String colName
+                    ) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, org.apache.thrift.TException;
+
+    @ThriftMethod(value = "get_partition_column_statistics",
+                    exception = {
+                                    @ThriftException(type = NoSuchObjectException.class, id = 1),
+                                    @ThriftException(type = MetaException.class, id = 2),
+                                    @ThriftException(type = InvalidInputException.class, id = 3),
+                                    @ThriftException(type = InvalidObjectException.class, id = 4)
+                    })
+    ColumnStatistics getPartitionColumnStatistics(
+                                                  @ThriftField(value = 1, name = "db_name") final String dbName,
+                                                  @ThriftField(value = 2, name = "tbl_name") final String tblName,
+                                                  @ThriftField(value = 3, name = "part_name") final String partName,
+                                                  @ThriftField(value = 4, name = "col_name") final String colName
+                    ) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, org.apache.thrift.TException;
+
     @ThriftMethod(value = "delete_partition_column_statistics",
                     exception = {
                                     @ThriftException(type = NoSuchObjectException.class, id = 1),

@@ -15,13 +15,13 @@
  */
 package org.apache.hadoop.hive.metastore.api;
 
-import static com.google.common.base.Objects.toStringHelper;
-
 import com.facebook.swift.codec.ThriftConstructor;
 import com.facebook.swift.codec.ThriftField;
 import com.facebook.swift.codec.ThriftStruct;
 
 import java.util.List;
+
+import static com.google.common.base.Objects.toStringHelper;
 
 @ThriftStruct("Type")
 public class Type
