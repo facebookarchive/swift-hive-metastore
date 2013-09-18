@@ -21,18 +21,24 @@ import com.google.common.base.Joiner;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import io.airlift.log.Logger;
+
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.JavaUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.metastore.api.Constants;
+import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
+import org.apache.hadoop.hive.metastore.api.InvalidObjectException;
 import org.apache.hadoop.hive.metastore.api.InvalidOperationException;
 import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.api.SerDeInfo;
 import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
 import org.apache.hadoop.hive.metastore.api.Table;
-import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.Deserializer;
 import org.apache.hadoop.hive.serde2.SerDeException;
@@ -45,8 +51,6 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
-
-import io.airlift.log.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -667,42 +671,42 @@ public class MetaStoreUtils {
     String inputFormat = sd.getInputFormat();
     if (inputFormat == null || inputFormat.length() == 0) {
       String tblInput =
-        schema.getProperty(org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.FILE_INPUT_FORMAT);
+        schema.getProperty(Constants.FILE_INPUT_FORMAT);
       if (tblInput == null) {
         inputFormat = org.apache.hadoop.mapred.SequenceFileInputFormat.class.getName();
       } else {
         inputFormat = tblInput;
       }
     }
-    schema.setProperty(org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.FILE_INPUT_FORMAT,
+    schema.setProperty(Constants.FILE_INPUT_FORMAT,
         inputFormat);
 
     // OutputFormat
     String outputFormat = sd.getOutputFormat();
     if (outputFormat == null || outputFormat.length() == 0) {
       String tblOutput =
-        schema.getProperty(org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.FILE_OUTPUT_FORMAT);
+        schema.getProperty(Constants.FILE_OUTPUT_FORMAT);
       if (tblOutput == null) {
         outputFormat = org.apache.hadoop.mapred.SequenceFileOutputFormat.class.getName();
       } else {
         outputFormat = tblOutput;
       }
     }
-    schema.setProperty(org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.FILE_OUTPUT_FORMAT,
+    schema.setProperty(Constants.FILE_OUTPUT_FORMAT,
         outputFormat);
 
     // Location
     if (sd.getLocation() != null) {
-      schema.setProperty(org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_LOCATION,
+      schema.setProperty(Constants.META_TABLE_LOCATION,
           sd.getLocation());
     }
 
     // Bucket count
-    schema.setProperty(org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.BUCKET_COUNT,
+    schema.setProperty(Constants.BUCKET_COUNT,
         Integer.toString(sd.getNumBuckets()));
 
     if (sd.getBucketCols() != null && sd.getBucketCols().size() > 0) {
-      schema.setProperty(org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.BUCKET_FIELD_NAME,
+      schema.setProperty(Constants.BUCKET_FIELD_NAME,
           sd.getBucketCols().get(0));
     }
 
@@ -712,9 +716,9 @@ public class MetaStoreUtils {
       // We should not update the following 3 values if SerDeInfo contains these.
       // This is to keep backward compatible with getSchema(), where these 3 keys
       // are updated after SerDeInfo properties got copied.
-      String cols = org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_COLUMNS;
-      String colTypes = org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_COLUMN_TYPES;
-      String parts = org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_PARTITION_COLUMNS;
+      String cols = Constants.META_TABLE_COLUMNS;
+      String colTypes = Constants.META_TABLE_COLUMN_TYPES;
+      String parts = Constants.META_TABLE_PARTITION_COLUMNS;
 
       for (Map.Entry<String,String> param : sd.getSerdeInfo().getParameters().entrySet()) {
         String key = param.getKey();
@@ -755,7 +759,7 @@ public class MetaStoreUtils {
         .getName();
     }
     schema.setProperty(
-      org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.FILE_INPUT_FORMAT,
+      Constants.FILE_INPUT_FORMAT,
       inputFormat);
     String outputFormat = sd.getOutputFormat();
     if (outputFormat == null || outputFormat.length() == 0) {
@@ -763,24 +767,24 @@ public class MetaStoreUtils {
         .getName();
     }
     schema.setProperty(
-      org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.FILE_OUTPUT_FORMAT,
+      Constants.FILE_OUTPUT_FORMAT,
       outputFormat);
 
     schema.setProperty(
-        org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_NAME,
+        Constants.META_TABLE_NAME,
         databaseName + "." + tableName);
 
     if (sd.getLocation() != null) {
       schema.setProperty(
-          org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_LOCATION,
+          Constants.META_TABLE_LOCATION,
           sd.getLocation());
     }
     schema.setProperty(
-        org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.BUCKET_COUNT, Integer
+        Constants.BUCKET_COUNT, Integer
             .toString(sd.getNumBuckets()));
     if (sd.getBucketCols() != null && sd.getBucketCols().size() > 0) {
       schema.setProperty(
-          org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.BUCKET_FIELD_NAME, sd
+          Constants.BUCKET_FIELD_NAME, sd
               .getBucketCols().get(0));
     }
     if (sd.getSerdeInfo() != null) {
@@ -809,10 +813,10 @@ public class MetaStoreUtils {
     String colNames = colNameBuf.toString();
     String colTypes = colTypeBuf.toString();
     schema.setProperty(
-        org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_COLUMNS,
+        Constants.META_TABLE_COLUMNS,
         colNames);
     schema.setProperty(
-        org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_COLUMN_TYPES,
+        Constants.META_TABLE_COLUMN_TYPES,
         colTypes);
     if (sd.getCols() != null) {
       schema.setProperty(
@@ -832,7 +836,7 @@ public class MetaStoreUtils {
     if (partString.length() > 0) {
       schema
           .setProperty(
-              org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_PARTITION_COLUMNS,
+              Constants.META_TABLE_PARTITION_COLUMNS,
               partString);
     }
 
@@ -1013,7 +1017,7 @@ public class MetaStoreUtils {
   public static boolean isArchived(
       org.apache.hadoop.hive.metastore.api.Partition part) {
     Map<String, String> params = part.getParameters();
-    if ("true".equalsIgnoreCase(params.get(hive_metastoreConstants.IS_ARCHIVED))) {
+    if ("true".equalsIgnoreCase(params.get(Constants.IS_ARCHIVED))) {
       return true;
     } else {
       return false;
@@ -1024,7 +1028,7 @@ public class MetaStoreUtils {
       org.apache.hadoop.hive.metastore.api.Partition part) {
     Map<String, String> params = part.getParameters();
     assert isArchived(part);
-    String originalLocation = params.get(hive_metastoreConstants.ORIGINAL_LOCATION);
+    String originalLocation = params.get(Constants.ORIGINAL_LOCATION);
     assert originalLocation != null;
 
     return new Path(originalLocation);
@@ -1034,7 +1038,7 @@ public class MetaStoreUtils {
     if (table == null) {
       return false;
     }
-    return table.getParameters().get(hive_metastoreConstants.META_TABLE_STORAGE) != null;
+    return table.getParameters().get(Constants.META_TABLE_STORAGE) != null;
   }
 
   /**
@@ -1236,4 +1240,304 @@ public class MetaStoreUtils {
     return null;
   }
 
+//
+// ========================================================================
+//
+// Extensions
+//
+// ========================================================================
+//
+
+  /**
+   * @param partParams
+   * @return True if the passed Parameters Map contains values for all "Fast Stats".
+   */
+  public static boolean containsAllFastStats(Map<String, String> partParams) {
+    List<String> fastStats = StatsSetupConst.getStatsNoScan();
+    boolean result = true;
+    for (String stat : fastStats) {
+      if (!partParams.containsKey(stat)) {
+        return false;
+      }
+    }
+    return result;
+  }
+
+  public static boolean shouldCalcuTableStats(Configuration hiveConf, Table tbl) {
+    return HiveConf.getBoolVar(hiveConf, HiveConf.ConfVars.HIVESTATSAUTOGATHER)
+                    && tbl != null && !MetaStoreUtils.isView(tbl)
+                    && tbl.getTableType() != null && !TableType.isTableLink(tbl.getTableType())
+                    && tbl.getParameters() != null && !MetaStoreUtils.isNonNativeTable(tbl)
+                    && !MetaStoreUtils.isViewLink(tbl) && !MetaStoreUtils.isExternalTable(tbl);
+  }
+
+  public static boolean updateUnpartitionedTableStatsFast(Database db, Table tbl, Warehouse wh)
+      throws MetaException {
+    return updateUnpartitionedTableStatsFast(db, tbl, wh, false, false);
+  }
+
+  public static boolean updateUnpartitionedTableStatsFast(Database db, Table tbl, Warehouse wh,
+      boolean madeDir) throws MetaException {
+    return updateUnpartitionedTableStatsFast(db, tbl, wh, madeDir, false);
+  }
+
+  /**
+   * Updates the numFiles and totalSize parameters for the passed unpartitioned Table by querying
+   * the warehouse if the passed Table does not already have values for these parameters.
+   * @param db
+   * @param tbl
+   * @param wh
+   * @param madeDir if true, the directory was just created and can be assumed to be empty
+   * @param forceRecompute Recompute stats even if the passed Table already has
+   * these parameters set
+   * @return true if the stats were updated, false otherwise
+   */
+  public static boolean updateUnpartitionedTableStatsFast(Database db, Table tbl, Warehouse wh,
+      boolean madeDir, boolean forceRecompute) throws MetaException {
+    Map<String,String> params = tbl.getParameters();
+    boolean updated = false;
+    if (forceRecompute ||
+        params == null ||
+        !containsAllFastStats(params)) {
+      if (params == null) {
+        params = new HashMap<String,String>();
+      }
+      if (!madeDir) {
+        // The location already existed and may contain data. Lets try to
+        // populate those statistics that don't require a full scan of the data.
+        FileStatus[] fileStatus = wh.getFileStatusesForUnpartitionedTable(db, tbl);
+        if (fileStatus == null) {
+          log.info("Fail to retrieve hdfs information for table %s.", tbl.getTableName());
+          return false;
+        }
+        log.info("Updating table stats fast for table %s.", tbl.getTableName());
+        params.put(StatsSetupConst.NUM_FILES, Integer.toString(fileStatus.length));
+        long tableSize = 0L;
+        for (int i = 0; i < fileStatus.length; i++) {
+          tableSize += fileStatus[i].getLen();
+        }
+        params.put(StatsSetupConst.TOTAL_SIZE, Long.toString(tableSize));
+        log.info("Updated total size to %d for table %s.", tableSize, tbl.getTableName());
+
+        if (params.containsKey(StatsSetupConst.ROW_COUNT) ||
+            params.containsKey(StatsSetupConst.RAW_DATA_SIZE)) {
+            log.info("The accuracy of these stats (%s=%s, %s=%s for table %s)  at this point is suspect unless we know that StatsTask was just run before this MetaStore call and populated them",
+                     StatsSetupConst.ROW_COUNT, params.get(StatsSetupConst.ROW_COUNT),
+                     StatsSetupConst.RAW_DATA_SIZE, params.get(StatsSetupConst.RAW_DATA_SIZE),
+                     tbl.getTableName());
+        }
+      }
+      tbl.setParameters(params);
+      updated = true;
+    }
+    return updated;
+  }
+
+  private static boolean doFastStatsExist(Map<String, String> parameters) {
+    return parameters.containsKey(StatsSetupConst.NUM_FILES)
+        && parameters.containsKey(StatsSetupConst.TOTAL_SIZE);
+  }
+
+  public static boolean requireCalcStats(Partition oldPart, Partition newPart) {
+    // requires to calculate stats if new partition doesn't have it
+    if (newPart == null || newPart.getParameters() == null
+        || !doFastStatsExist(newPart.getParameters())) {
+      return true;
+    }
+
+    // requires to calculate stats if new and old have different stats
+    if (oldPart != null && oldPart.getParameters() != null) {
+      if (oldPart.getParameters().containsKey(StatsSetupConst.NUM_FILES)) {
+        long oldNumFile = Long.parseLong(oldPart.getParameters().get(StatsSetupConst.NUM_FILES));
+        long newNumFile = Long.parseLong(newPart.getParameters().get(StatsSetupConst.NUM_FILES));
+        if (oldNumFile != newNumFile) {
+          return true;
+        }
+      }
+
+      if (oldPart.getParameters().containsKey(StatsSetupConst.TOTAL_SIZE)) {
+        long oldTotalSize = Long.parseLong(oldPart.getParameters().get(StatsSetupConst.TOTAL_SIZE));
+        long newTotalSize = Long.parseLong(newPart.getParameters().get(StatsSetupConst.TOTAL_SIZE));
+        if (oldTotalSize != newTotalSize) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  public static boolean updatePartitionStatsFast(Partition part, Warehouse wh)
+      throws MetaException {
+    return updatePartitionStatsFast(part, wh, false, false);
+  }
+
+  public static boolean updatePartitionStatsFast(Partition part, Warehouse wh, boolean madeDir)
+      throws MetaException {
+    return updatePartitionStatsFast(part, wh, madeDir, false);
+  }
+
+  /**
+   * Updates the numFiles and totalSize parameters for the passed Partition by querying
+   *  the warehouse if the passed Partition does not already have values for these parameters.
+   * @param part
+   * @param wh
+   * @param madeDir if true, the directory was just created and can be assumed to be empty
+   * @param forceRecompute Recompute stats even if the passed Partition already has
+   * these parameters set
+   * @return true if the stats were updated, false otherwise
+   */
+  public static boolean updatePartitionStatsFast(Partition part, Warehouse wh,
+      boolean madeDir, boolean forceRecompute) throws MetaException {
+    Map<String,String> params = part.getParameters();
+    boolean updated = false;
+    if (forceRecompute ||
+        params == null ||
+        !containsAllFastStats(params)) {
+      if (params == null) {
+        params = new HashMap<String,String>();
+      }
+      if (!madeDir) {
+        // The partitition location already existed and may contain data. Lets try to
+        // populate those statistics that don't require a full scan of the data.
+        FileStatus[] fileStatus = wh.getFileStatusesForPartition(part);
+        if (fileStatus == null) {
+          log.info("Fail to retrieve hdfs information for table %s and partition values %s", part.getTableName(), part.getValues());
+          return false;
+        }
+        log.info("Updating partition stats fast for table %s and partition values %s", part.getTableName(), part.getValues());
+        params.put(StatsSetupConst.NUM_FILES, Integer.toString(fileStatus.length));
+        long partSize = 0L;
+        for (int i = 0; i < fileStatus.length; i++) {
+          partSize += fileStatus[i].getLen();
+        }
+        params.put(StatsSetupConst.TOTAL_SIZE, Long.toString(partSize));
+        log.info("Updated total size to %d for table %s and partition values %s", partSize, part.getTableName(), part.getValues());
+        if (params.containsKey(StatsSetupConst.ROW_COUNT) ||
+            params.containsKey(StatsSetupConst.RAW_DATA_SIZE)) {
+            log.info("The accuracy of these stats (%s=%s, %s=%s for table %s and partition values %s)  at this point is suspect unless we know that StatsTask was just run before this MetaStore call and populated them",
+                     StatsSetupConst.ROW_COUNT, params.get(StatsSetupConst.ROW_COUNT),
+                     StatsSetupConst.RAW_DATA_SIZE, params.get(StatsSetupConst.RAW_DATA_SIZE),
+                     part.getTableName(), part.getValues());
+        }
+      }
+      part.setParameters(params);
+      updated = true;
+    }
+    return updated;
+  }
+
+  static public String getTableLinkName(String targetDbName,
+      String targetTableName) {
+    return targetTableName + TableType.TABLE_LINK_SYMBOL +
+        targetDbName;
+  }
+
+  static public boolean isTableLinkName(String tableLinkName) {
+    return tableLinkName.contains(TableType.TABLE_LINK_SYMBOL);
+  }
+
+  /**
+   * Validates the name of the passed Table. A valid name is "[a-zA-z_0-9]+" except for Table Links
+   * for which the name is "X:Y" where X and Y conform to the usual standard.
+   * @param tbl
+   * @return true or false depending on conformance
+   */
+  static public boolean validateTableName(Table tbl) {
+    String name = tbl.getTableName();
+    if (tbl.getTableType() != null &&
+        (tbl.getTableType().equals(TableType.DYNAMIC_TABLE_LINK.toString()) ||
+        tbl.getTableType().equals(TableType.STATIC_TABLE_LINK.toString()))) {
+      String[] tokens = name.split(TableType.TABLE_LINK_SYMBOL);
+      if (tokens.length != 2 || !validateName(tokens[0])
+          || !validateName(tokens[1])) {
+        return false;
+      } else {
+        return true;
+      }
+    } else {
+      return validateName(name);
+    }
+  }
+
+  static void throwExceptionIfColAddedDeletedInMiddle(
+      List<FieldSchema> oldCols, List<FieldSchema> newCols)
+      throws InvalidOperationException {
+
+    if (oldCols.size() == newCols.size()) {
+      // Nothing to do since there were no columns added or removed.
+      return;
+    }
+
+    int maxCols = Math.min(oldCols.size(), newCols.size());
+    for (int i = 0; i < maxCols; i++) {
+      String oldColName = oldCols.get(i).getName();
+      String newColName = newCols.get(i).getName();
+      if (!oldColName.equals(newColName)) {
+        throw new InvalidOperationException(
+            "You can only add/remove columns from the end of a table." +
+            "If that is indeed what you are doing here, you are seeing this " +
+            "error because you are renaming a column at the same time. " +
+            "Please do the rename in a separate DDL operation." +
+            "Problematic columns: " +
+            "Old Table: " + oldColName + ", " +
+            "New Table: " + newColName
+          );
+      }
+    }
+  }
+
+
+  /**
+   * Does additional Table validation that supplements the name validation.
+   * @param tbl
+   * @throws InvalidObjectException if the passed Table is found to be invalid.
+   */
+  static public void validateTable(Table tbl) throws InvalidObjectException {
+    if (tbl.getTableType() == null) {
+      return;
+    }
+    switch (TableType.fromString(tbl.getTableType())) {
+    case STATIC_TABLE_LINK:
+    case DYNAMIC_TABLE_LINK:
+      if (tbl.getLinkTarget()  == null) {
+        throw new InvalidObjectException("Table link " + tbl.getTableName() + " does not have "
+            + "its link target set");
+      }
+      if (tbl.getLinkTables() != null && tbl.getLinkTables().size() > 0) {
+        throw new InvalidObjectException("Table link " + tbl.getTableName() + " itself has links"
+            + " pointing to it. That is not allowed");
+      }
+      break;
+    case MANAGED_TABLE:
+    case EXTERNAL_TABLE:
+    case INDEX_TABLE:
+      if (tbl.getViewExpandedText() != null  || tbl.getViewOriginalText() != null) {
+        throw new InvalidObjectException("Table " + tbl.getTableName() + " is not a View but has"
+            + " original or expanded view text set for it.");
+      }
+    case VIRTUAL_VIEW:
+      if (tbl.getLinkTarget() != null) {
+        throw new InvalidObjectException(tbl.getTableName() + " is not a Table Link but has its"
+            + " link target set.");
+      }
+      break;
+      default:
+        throw new InvalidObjectException("Table "+ tbl.getTableName() + " has an unknown"
+            + " table type.");
+    }
+  }
+
+  public static boolean isViewLink(Table table) {
+    if (table == null || table.getLinkTarget() == null) {
+      return false;
+    }
+    return TableType.VIRTUAL_VIEW.toString().equals(table.getLinkTarget().getTableType());
+  }
+
+  public static boolean isView(Table table) {
+    if (table == null) {
+      return false;
+    }
+    return TableType.VIRTUAL_VIEW.toString().equals(table.getTableType());
+  }
 }

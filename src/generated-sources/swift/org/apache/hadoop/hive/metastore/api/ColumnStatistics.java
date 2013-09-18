@@ -23,38 +23,54 @@ import java.util.List;
 
 import static com.google.common.base.Objects.toStringHelper;
 
-@ThriftStruct("PrivilegeBag")
-public class PrivilegeBag
+@ThriftStruct("ColumnStatistics")
+public class ColumnStatistics
 {
     @ThriftConstructor
-    public PrivilegeBag(
-                        @ThriftField(value = 1, name = "privileges") final List<HiveObjectPrivilege> privileges)
+    public ColumnStatistics(
+                            @ThriftField(value = 1, name = "statsDesc") final ColumnStatisticsDesc statsDesc,
+                            @ThriftField(value = 2, name = "statsObj") final List<ColumnStatisticsObj> statsObj)
     {
-        this.privileges = privileges;
+        this.statsDesc = statsDesc;
+        this.statsObj = statsObj;
     }
 
-    public PrivilegeBag()
+    public ColumnStatistics()
     {
     }
 
-    private List<HiveObjectPrivilege> privileges;
+    private ColumnStatisticsDesc statsDesc;
 
-    @ThriftField(value = 1, name = "privileges")
-    public List<HiveObjectPrivilege> getPrivileges()
+    @ThriftField(value = 1, name = "statsDesc")
+    public ColumnStatisticsDesc getStatsDesc()
     {
-        return privileges;
+        return statsDesc;
     }
 
-    public void setPrivileges(final List<HiveObjectPrivilege> privileges)
+    public void setStatsDesc(final ColumnStatisticsDesc statsDesc)
     {
-        this.privileges = privileges;
+        this.statsDesc = statsDesc;
+    }
+
+    private List<ColumnStatisticsObj> statsObj;
+
+    @ThriftField(value = 2, name = "statsObj")
+    public List<ColumnStatisticsObj> getStatsObj()
+    {
+        return statsObj;
+    }
+
+    public void setStatsObj(final List<ColumnStatisticsObj> statsObj)
+    {
+        this.statsObj = statsObj;
     }
 
     @Override
     public String toString()
     {
         return toStringHelper(this)
-            .add("privileges", privileges)
+            .add("statsDesc", statsDesc)
+            .add("statsObj", statsObj)
             .toString();
     }
 }

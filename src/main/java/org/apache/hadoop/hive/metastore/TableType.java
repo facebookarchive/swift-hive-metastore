@@ -21,5 +21,28 @@ package org.apache.hadoop.hive.metastore;
  * Typesafe enum for types of tables described by the metastore.
  */
 public enum TableType {
-  MANAGED_TABLE, EXTERNAL_TABLE, VIRTUAL_VIEW, INDEX_TABLE
+    MANAGED_TABLE,
+    EXTERNAL_TABLE,
+    VIRTUAL_VIEW,
+    INDEX_TABLE,
+    DYNAMIC_TABLE_LINK,
+    STATIC_TABLE_LINK;
+
+    public static final String TABLE_LINK_SYMBOL = ":";   // TableLink Notation is Table:Database
+
+    public static TableType fromString(final String tabTypeStr)
+    {
+        for (TableType tableType : values()) {
+            if (tableType.toString().equalsIgnoreCase(tabTypeStr)) {
+                return tableType;
+            }
+        }
+        return null;
+    }
+
+    public static boolean isTableLink(String tabTypeStr)
+    {
+        return TableType.DYNAMIC_TABLE_LINK.toString().equalsIgnoreCase(tabTypeStr)
+                || TableType.STATIC_TABLE_LINK.toString().equalsIgnoreCase(tabTypeStr);
+    }
 }

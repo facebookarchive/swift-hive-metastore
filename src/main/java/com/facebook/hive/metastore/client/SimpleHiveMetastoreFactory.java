@@ -15,11 +15,11 @@
  */
 package com.facebook.hive.metastore.client;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.facebook.swift.service.ThriftClient;
 import com.facebook.swift.service.ThriftClientConfig;
 import com.facebook.swift.service.ThriftClientManager;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class SimpleHiveMetastoreFactory
     extends GuiceHiveMetastoreFactory

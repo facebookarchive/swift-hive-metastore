@@ -25,27 +25,29 @@ public class MetaException extends RuntimeException
     private static final long serialVersionUID = 1L;
 
     @ThriftConstructor
-    public MetaException(
-                         @ThriftField(value = 1, name = "message") final String message)
+    public MetaException(@ThriftField(value = 1, name = "message") final String message)
     {
-        this.message = message;
+        super(message);
+    }
+
+    public MetaException(final Throwable t)
+    {
+        super(t);
+    }
+
+    public MetaException(final String message, final Throwable t)
+    {
+        super(message, t);
     }
 
     public MetaException()
     {
     }
 
-    private String message;
-
     @Override
     @ThriftField(value = 1, name = "message")
     public String getMessage()
     {
-        return message;
-    }
-
-    public void setMessage(final String message)
-    {
-        this.message = message;
+        return super.getMessage();
     }
 }

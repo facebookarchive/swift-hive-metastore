@@ -18,6 +18,7 @@ package com.facebook.hive.metastore;
 import com.facebook.hive.metastore.client.HiveMetastore;
 
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException;
+import org.apache.hadoop.hive.metastore.api.ColumnStatistics;
 import org.apache.hadoop.hive.metastore.api.ConfigValSecurityException;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.EnvironmentContext;
@@ -493,6 +494,30 @@ public abstract class AbstractMetastore implements HiveMetastore
 
     @Override
     public List<String> getIndexNames(final String dbName, final String tblName, final short maxIndexes) throws MetaException, TException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean updateTableColumnStatistics(ColumnStatistics statsObj) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, TException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean updatePartitionColumnStatistics(ColumnStatistics statsObj) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, TException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ColumnStatistics getTableColumnStatistics(String dbName, String tblName, String colName) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ColumnStatistics getPartitionColumnStatistics(String dbName, String tblName, String partName, String colName) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException
     {
         throw new UnsupportedOperationException();
     }

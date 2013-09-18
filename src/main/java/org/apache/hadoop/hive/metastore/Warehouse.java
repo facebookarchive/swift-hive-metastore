@@ -17,23 +17,7 @@
  */
 package org.apache.hadoop.hive.metastore;
 
-import static org.apache.hadoop.hive.metastore.MetaStoreUtils.DATABASE_WAREHOUSE_SUFFIX;
-import static org.apache.hadoop.hive.metastore.MetaStoreUtils.DEFAULT_DATABASE_NAME;
-
 import io.airlift.log.Logger;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.security.auth.login.LoginException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -46,9 +30,28 @@ import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hadoop.hive.metastore.api.Partition;
+import org.apache.hadoop.hive.metastore.api.SkewedInfo;
+import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.shims.ShimLoader;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.ReflectionUtils;
+
+import javax.security.auth.login.LoginException;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static org.apache.hadoop.hive.metastore.MetaStoreUtils.DATABASE_WAREHOUSE_SUFFIX;
+import static org.apache.hadoop.hive.metastore.MetaStoreUtils.DEFAULT_DATABASE_NAME;
 
 /**
  * This class represents a warehouse where data of Hive tables is stored
@@ -490,4 +493,95 @@ public class Warehouse {
     return values;
   }
 
+//
+// ========================================================================
+//
+// Extensions
+//
+// ========================================================================
+//
+
+  /**
+   * @param partn
+   * @return array of FileStatus objects corresponding to the files making up the passed partition
+   */
+  public FileStatus[] getFileStatusesForPartition(Partition partn)
+      throws MetaException {
+    try {
+      if (partn == null || partn.getSd() == null || partn.getSd().getLocation() == null) {
+        return null;
+      }
+      Path path = new Path(partn.getSd().getLocation());
+      FileSystem fileSys = path.getFileSystem(conf);
+      /* consider sub-directory created from list bucketing. */
+      int listBucketingDepth = calculateListBucketingDMLDepth(partn);
+      return getFileStatusRecurse(path, 1 + listBucketingDepth, fileSys);
+    } catch (IOException ioe) {
+      MetaStoreUtils.logAndThrowMetaException(ioe);
+    }
+    return null;
+  }
+
+  /**
+   * List bucketing will introduce sub-directories.
+   * calculate it here in order to go to the leaf directory
+   * so that we can count right number of files.
+   * @param partn
+   * @return
+   */
+  private static int calculateListBucketingDMLDepth(Partition partn) {
+    // list bucketing will introduce more files
+    int listBucketingDepth = 0;
+    SkewedInfo skewedInfo = partn.getSd().getSkewedInfo();
+    if (skewedInfo != null && skewedInfo.getSkewedColNames() != null
+        && skewedInfo.getSkewedColNames().size() > 0
+        && skewedInfo.getSkewedColValues() != null
+        && skewedInfo.getSkewedColValues().size() > 0
+        && skewedInfo.getSkewedColValueLocationMaps() != null
+        && skewedInfo.getSkewedColValueLocationMaps().size() > 0) {
+      listBucketingDepth = skewedInfo.getSkewedColNames().size();
+    }
+    return listBucketingDepth;
+  }
+
+  /**
+   * @param table
+   * @return array of FileStatus objects corresponding to the files making up the passed
+   * unpartitioned table
+   */
+  public FileStatus[] getFileStatusesForUnpartitionedTable(Database db, Table table)
+      throws MetaException {
+    Path tablePath = getTablePath(db, table.getTableName());
+    try {
+      FileSystem fileSys = tablePath.getFileSystem(conf);
+      return getFileStatusRecurse(tablePath, 1, fileSys);
+    } catch (IOException ioe) {
+      MetaStoreUtils.logAndThrowMetaException(ioe);
+    }
+    return null;
+  }
+
+  /**
+   * Get all file status from a root path and recursively go deep into certain levels.
+   *
+   * @param path
+   *          the root path
+   * @param level
+   *          the depth of directories to explore
+   * @param fs
+   *          the file system
+   * @return array of FileStatus
+   * @throws IOException
+   */
+  public static FileStatus[] getFileStatusRecurse(Path path, int level, FileSystem fs)
+      throws IOException {
+
+    // construct a path pattern (e.g., /*/*) to find all dynamically generated paths
+    StringBuilder sb = new StringBuilder(path.toUri().getPath());
+    for (int i = 0; i < level; i++) {
+      sb.append(Path.SEPARATOR).append("*");
+    }
+    Path pathPattern = new Path(path, sb.toString());
+    return fs.globStatus(pathPattern);
+  }
 }
