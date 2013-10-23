@@ -23,7 +23,7 @@
   <parent>
     <groupId>com.facebook</groupId>
     <artifactId>facebook-oss-pom</artifactId>
-    <version>7</version>
+    <version>8</version>
   </parent>
 
   <groupId>com.facebook</groupId>
@@ -39,6 +39,7 @@
 
   <scm>
     <connection>scm:git:git://github.com/facebook/swift-hive-metastore.git</connection>
+    <developerConnection>scm:git:git@github.com/facebook/swift-hive-metastore.git</developerConnection>
     <url>https://github.com/facebook/swift-hive-metastore</url>
     <tag>HEAD</tag>
   </scm>
@@ -46,9 +47,9 @@
   <developers />
 
   <properties>
-    <dep.airlift.version>0.79</dep.airlift.version>
-    <dep.swift.version>0.10.0-SNAPSHOT</dep.swift.version>
-    <dep.nifty.version>0.10.0-SNAPSHOT</dep.nifty.version>
+    <dep.airlift.version>0.83</dep.airlift.version>
+    <dep.swift.version>0.10.0</dep.swift.version>
+    <dep.nifty.version>0.10.0</dep.nifty.version>
     <dep.hive.version>0.11.0</dep.hive.version>
   </properties>
 
@@ -82,7 +83,7 @@
     <dependency>
       <groupId>org.apache.thrift</groupId>
       <artifactId>libthrift</artifactId>
-      <version>0.9.0</version>
+      <version>0.9.1</version>
     </dependency>
 
     <dependency>
@@ -342,13 +343,13 @@
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpclient</artifactId>
-        <version>4.2.3</version>
+        <version>4.2.5</version>
       </dependency>
 
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpcore</artifactId>
-        <version>4.2.3</version>
+        <version>4.2.4</version>
       </dependency>
 
       <dependency>
