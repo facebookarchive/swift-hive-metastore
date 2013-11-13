@@ -15,18 +15,18 @@
  */
 package com.facebook.hive.metastore.client;
 
-import com.google.common.net.HostAndPort;
-import com.google.common.util.concurrent.ListenableFuture;
-
 import org.apache.thrift.transport.TTransportException;
 
 public interface HiveMetastoreFactory
+    extends HiveMetastoreProvider<HiveMetastore>
 {
-    ListenableFuture<HiveMetastore> getDefaultClientAsFuture();
-
-    ListenableFuture<HiveMetastore> getClientForHostAsFuture(HostAndPort hostAndPort, boolean framed);
-
+    /**
+     * Returns a client connected to the store using the default configuration settings.
+     */
     HiveMetastore getDefaultClient() throws InterruptedException, TTransportException;
 
-    HiveMetastore getClientForHost(HostAndPort hostAndPort, boolean framed) throws InterruptedException, TTransportException;
+    /**
+     * Return a client connected to the store described in the {@link HiveMetastoreClientConfig} object.
+     */
+    HiveMetastore getClientForHost(HiveMetastoreClientConfig config) throws InterruptedException, TTransportException;
 }
