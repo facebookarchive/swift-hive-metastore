@@ -26,4 +26,6 @@ public interface HiveMetastore extends Closeable, FacebookHiveMetastore
 {
     @Override
     void close();
+
+    boolean isConnected();
 }

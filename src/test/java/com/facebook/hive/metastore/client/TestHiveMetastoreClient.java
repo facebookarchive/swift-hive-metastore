@@ -15,10 +15,6 @@
  */
 package com.facebook.hive.metastore.client;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-
 import com.facebook.hive.metastore.client.testing.DummyHiveMetastoreServerModule;
 import com.facebook.hive.metastore.client.testing.NetUtils;
 import com.facebook.swift.codec.guice.ThriftCodecModule;
@@ -28,15 +24,18 @@ import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
-import org.apache.hadoop.hive.metastore.api.Table;
-import org.apache.thrift.transport.TTransportException;
-import org.junit.After;
-import org.junit.Test;
-
 import io.airlift.bootstrap.Bootstrap;
 import io.airlift.bootstrap.LifeCycleManager;
 
+import org.apache.hadoop.hive.metastore.api.Table;
+import org.junit.After;
+import org.junit.Test;
+
 import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 public class TestHiveMetastoreClient
 {
@@ -96,9 +95,7 @@ public class TestHiveMetastoreClient
             final HiveMetastoreFactory factory = new SimpleHiveMetastoreFactory(clientManager, clientConfig, metastoreConfig);
 
             try (final HiveMetastore metastore = factory.getDefaultClient()) {
-                fail();
-            }
-            catch (TTransportException e) {
+                assertFalse(metastore.isConnected());
             }
 
             startService(port);

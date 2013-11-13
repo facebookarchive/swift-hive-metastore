@@ -15,6 +15,8 @@
  */
 package com.facebook.hive.metastore.client;
 
+import com.google.common.net.HostAndPort;
+
 import org.apache.thrift.transport.TTransportException;
 
 public interface HiveMetastoreFactory
@@ -24,6 +26,12 @@ public interface HiveMetastoreFactory
      * Returns a client connected to the store using the default configuration settings.
      */
     HiveMetastore getDefaultClient() throws InterruptedException, TTransportException;
+
+    /**
+     * Return a client connected to the store described in the the supplied {@link HostAndPort} element. All
+     * additional settings are taken from the default configuration settings.
+     */
+    HiveMetastore getClientForHost(HostAndPort hostAndPort) throws InterruptedException, TTransportException;
 
     /**
      * Return a client connected to the store described in the {@link HiveMetastoreClientConfig} object.

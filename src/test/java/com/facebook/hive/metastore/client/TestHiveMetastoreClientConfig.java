@@ -15,15 +15,18 @@
  */
 package com.facebook.hive.metastore.client;
 
-import static io.airlift.configuration.testing.ConfigAssertions.assertFullMapping;
-import static io.airlift.configuration.testing.ConfigAssertions.assertRecordedDefaults;
-import static io.airlift.configuration.testing.ConfigAssertions.recordDefaults;
-
 import com.google.common.collect.ImmutableMap;
+
+import io.airlift.units.Duration;
 
 import org.junit.Test;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import static io.airlift.configuration.testing.ConfigAssertions.assertFullMapping;
+import static io.airlift.configuration.testing.ConfigAssertions.assertRecordedDefaults;
+import static io.airlift.configuration.testing.ConfigAssertions.recordDefaults;
 
 public class TestHiveMetastoreClientConfig
 {
@@ -33,7 +36,10 @@ public class TestHiveMetastoreClientConfig
         assertRecordedDefaults(recordDefaults(HiveMetastoreClientConfig.class)
             .setHost("localhost")
             .setPort(9083)
-            .setFramed(false));
+            .setFramed(false)
+            .setMaxRetries(0)
+            .setRetrySleep(new Duration (5, TimeUnit.SECONDS))
+            .setRetryTimeout(new Duration(1, TimeUnit.MINUTES)));
     }
 
     @Test
@@ -43,12 +49,18 @@ public class TestHiveMetastoreClientConfig
             .put("hive-metastore.host", "some.host")
             .put("hive-metastore.port", "12345")
             .put("hive-metastore.framed", "true")
+            .put("hive-metastore.max-retries", "5")
+            .put("hive-metastore.retry-sleep", "10s")
+            .put("hive-metastore.retry-timeout", "2m")
             .build();
 
         HiveMetastoreClientConfig expected = new HiveMetastoreClientConfig()
             .setHost("some.host")
             .setPort(12345)
-            .setFramed(true);
+            .setFramed(true)
+            .setMaxRetries(5)
+            .setRetrySleep(new Duration(10, TimeUnit.SECONDS))
+            .setRetryTimeout(new Duration(2, TimeUnit.MINUTES));
 
         assertFullMapping(properties, expected);
     }

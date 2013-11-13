@@ -3,8 +3,12 @@
 - Rework the HiveMetastoreFactory; HiveMetastore objects are now lazily connected. Get rid of all
   methods that provide futures, only expose default client and a config specific method.
   This is a backwards incompatible change.
-
-
+- Add retry logic to the default hive metastore. This exposes three new configuration options:
+  hive-metastore.max-retries for the number of retries (default is 0, like the previous versions)
+  hive-metastore.retry-timeout for the maximum time that the server will try to do an API call
+  (default is 1 minute, like the old server)
+  hive-metastore.retry-sleep for the time that the client waits before trying to reconnect.
+  (default is 10 seconds).
 
 * 1.1
 

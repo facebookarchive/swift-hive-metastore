@@ -16,6 +16,7 @@
 package com.facebook.hive.metastore.client;
 
 import com.facebook.swift.service.ThriftClient;
+import com.google.common.net.HostAndPort;
 import com.google.inject.Inject;
 
 import org.apache.thrift.transport.TTransportException;
@@ -39,13 +40,19 @@ public class GuiceHiveMetastoreFactory
     @Override
     public HiveMetastore getDefaultClient() throws InterruptedException, TTransportException
     {
-        return getClientForHost(hiveMetastoreClientConfig);
+        return new RetryingHiveMetastore(hiveMetastoreClientConfig.getHostAndPort(), hiveMetastoreClientConfig, thriftClient);
+    }
+
+    @Override
+    public HiveMetastore getClientForHost(final HostAndPort hostAndPort) throws InterruptedException, TTransportException
+    {
+        return new RetryingHiveMetastore(hostAndPort, hiveMetastoreClientConfig, thriftClient);
     }
 
     @Override
     public HiveMetastore getClientForHost(final HiveMetastoreClientConfig config) throws InterruptedException, TTransportException
     {
-        return new RetryingHiveMetastore(config, thriftClient);
+        return new RetryingHiveMetastore(config.getHostAndPort(), config, thriftClient);
     }
 
     @Override

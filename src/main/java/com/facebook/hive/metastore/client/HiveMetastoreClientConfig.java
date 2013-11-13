@@ -18,14 +18,23 @@ package com.facebook.hive.metastore.client;
 import com.google.common.net.HostAndPort;
 
 import io.airlift.configuration.Config;
+import io.airlift.units.Duration;
+import io.airlift.units.MinDuration;
 
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
+
+import java.util.concurrent.TimeUnit;
 
 public class HiveMetastoreClientConfig
 {
     private String host = "localhost";
     private int port = 9083;
     private boolean framed = false;
+    private int maxRetries = 0;
+    private Duration retryTimeout = new Duration (1, TimeUnit.MINUTES);
+    private Duration retrySleep = new Duration (5, TimeUnit.SECONDS);
 
     @NotNull
     public String getHost()
@@ -40,7 +49,8 @@ public class HiveMetastoreClientConfig
         return this;
     }
 
-    @NotNull
+    @Min(1)
+    @Max(65535)
     public int getPort()
     {
         return port;
@@ -68,6 +78,45 @@ public class HiveMetastoreClientConfig
     public HostAndPort getHostAndPort()
     {
         return HostAndPort.fromParts(host, port);
+    }
+
+    @Min(0)
+    public int getMaxRetries()
+    {
+        return maxRetries;
+    }
+
+    @Config("hive-metastore.max-retries")
+    public HiveMetastoreClientConfig setMaxRetries(final int maxRetries)
+    {
+        this.maxRetries = maxRetries;
+        return this;
+    }
+
+    @MinDuration("1ms")
+    public Duration getRetryTimeout()
+    {
+        return retryTimeout;
+    }
+
+    @Config("hive-metastore.retry-timeout")
+    public HiveMetastoreClientConfig setRetryTimeout(final Duration retryTimeout)
+    {
+        this.retryTimeout = retryTimeout;
+        return this;
+    }
+
+    @MinDuration("1ms")
+    public Duration getRetrySleep()
+    {
+        return retrySleep;
+    }
+
+    @Config("hive-metastore.retry-sleep")
+    public HiveMetastoreClientConfig setRetrySleep(final Duration retrySleep)
+    {
+        this.retrySleep = retrySleep;
+        return this;
     }
 
 }
