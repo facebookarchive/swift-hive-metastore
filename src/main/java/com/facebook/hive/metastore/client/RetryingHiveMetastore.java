@@ -187,23 +187,45 @@ public class RetryingHiveMetastore implements HiveMetastore
             try {
                 return callable.call();
             }
-            catch (final TTransportException te) {
-                if (attempt >= config.getMaxRetries() || Duration.nanosSince(startTime).compareTo(config.getRetryTimeout()) >= 0) {
-                    throw te;
-                }
-                log.debug("Failed on executing %s with attempt %d, will retry. Exception: %s", apiName, attempt, te.getMessage());
-
-                final HiveMetastore client = clientHolder.getAndSet(null);
-                if (client != null) {
-                    client.close();
-                }
-
-                retrySleep();
-            }
-            // Manages all the Metastore runtime exceptions
             catch (final Throwable t) {
-                Throwables.propagateIfInstanceOf(t, TException.class);
-                throw Throwables.propagate(t);
+                TTransportException te = null;
+
+                if (t instanceof TTransportException) {
+                    te = (TTransportException) t;
+                }
+                else if (t.getCause() instanceof TTransportException) {
+                    te = (TTransportException) t.getCause();
+                    log.debug("Found a TTransportException (%s) wrapped in a %s", te.getMessage(), t.getClass().getSimpleName());
+                }
+
+                if (te != null) {
+                    final Duration now = Duration.nanosSince(startTime);
+                    if (attempt >= config.getMaxRetries() || now.compareTo(config.getRetryTimeout()) >= 0) {
+                        log.warn("Failed executing %s (attempt %s, timeout %sms), Exception: %s (%s)",
+                            apiName,
+                            attempt, now.toString(TimeUnit.MILLISECONDS),
+                            te.getClass().getSimpleName(), te.getMessage());
+
+                        Throwables.propagateIfInstanceOf(t, TException.class);
+                        throw Throwables.propagate(t);
+                    }
+                    log.debug("Retry executing %s (attempt %s, timeout %sms), Exception: %s (%s)",
+                        apiName,
+                        attempt, now.toString(TimeUnit.MILLISECONDS),
+                        te.getClass().getSimpleName(), te.getMessage());
+
+                    final HiveMetastore client = clientHolder.getAndSet(null);
+                    if (client != null) {
+                        client.close();
+                    }
+
+                    retrySleep();
+                }
+                else {
+                    log.warn("Failed executing %s, Exception: %s (%s)", apiName, t.getClass().getSimpleName(), t.getMessage());
+                    Throwables.propagateIfInstanceOf(t, TException.class);
+                    throw Throwables.propagate(t);
+                }
             }
         }
     }
