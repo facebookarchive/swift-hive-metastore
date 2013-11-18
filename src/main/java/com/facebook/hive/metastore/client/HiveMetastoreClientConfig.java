@@ -34,7 +34,7 @@ public class HiveMetastoreClientConfig
     private boolean framed = false;
     private int maxRetries = 0;
     private Duration retryTimeout = new Duration (1, TimeUnit.MINUTES);
-    private Duration retrySleep = new Duration (5, TimeUnit.SECONDS);
+    private Duration retrySleep = new Duration (10, TimeUnit.SECONDS);
 
     @NotNull
     public String getHost()

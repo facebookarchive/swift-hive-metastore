@@ -102,12 +102,14 @@ public class TestHiveMetastoreClientModule
             .initialize();
 
         try (HiveMetastore metastore = metastoreProvider.get()) {
-            assertTrue(metastore.isConnected());
+            assertFalse(metastore.isConnected());
 
             final Table table = metastore.getTable("hello", "world");
             assertNotNull(table);
             assertEquals("hello", table.getDbName());
             assertEquals("world", table.getTableName());
+
+            assertTrue(metastore.isConnected());
         }
     }
 }

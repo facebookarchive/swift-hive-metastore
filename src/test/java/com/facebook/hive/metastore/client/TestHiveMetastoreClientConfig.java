@@ -38,7 +38,7 @@ public class TestHiveMetastoreClientConfig
             .setPort(9083)
             .setFramed(false)
             .setMaxRetries(0)
-            .setRetrySleep(new Duration (5, TimeUnit.SECONDS))
+            .setRetrySleep(new Duration (10, TimeUnit.SECONDS))
             .setRetryTimeout(new Duration(1, TimeUnit.MINUTES)));
     }
 
@@ -50,7 +50,7 @@ public class TestHiveMetastoreClientConfig
             .put("hive-metastore.port", "12345")
             .put("hive-metastore.framed", "true")
             .put("hive-metastore.max-retries", "5")
-            .put("hive-metastore.retry-sleep", "10s")
+            .put("hive-metastore.retry-sleep", "30s")
             .put("hive-metastore.retry-timeout", "2m")
             .build();
 
@@ -59,7 +59,7 @@ public class TestHiveMetastoreClientConfig
             .setPort(12345)
             .setFramed(true)
             .setMaxRetries(5)
-            .setRetrySleep(new Duration(10, TimeUnit.SECONDS))
+            .setRetrySleep(new Duration(30, TimeUnit.SECONDS))
             .setRetryTimeout(new Duration(2, TimeUnit.MINUTES));
 
         assertFullMapping(properties, expected);

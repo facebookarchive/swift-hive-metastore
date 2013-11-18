@@ -54,7 +54,6 @@ import org.apache.hadoop.hive.metastore.api.Type;
 import org.apache.hadoop.hive.metastore.api.UnknownDBException;
 import org.apache.hadoop.hive.metastore.api.UnknownPartitionException;
 import org.apache.hadoop.hive.metastore.api.UnknownTableException;
-import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 
@@ -112,24 +111,8 @@ public class RetryingHiveMetastore implements HiveMetastore
         if (closed.get()) {
             return false;
         }
-        if (clientHolder.get() != null) {
-            return true;
-        }
 
-        try {
-            withRetries("connect", new Callable<Void>() {
-                @Override
-                public Void call() throws TException
-                {
-                    connectClient();
-                    return null;
-                }
-            });
-            return true;
-        }
-        catch (TException t) {
-            return false;
-        }
+        return clientHolder.get() != null;
     }
 
     @VisibleForTesting
@@ -137,7 +120,7 @@ public class RetryingHiveMetastore implements HiveMetastore
         throws TException
     {
         if (closed.get()) {
-            throw new TApplicationException("Client is already closed");
+            throw new TTransportException(TTransportException.NOT_OPEN, "Client is already closed");
         }
 
         HiveMetastore client = clientHolder.get();
@@ -168,7 +151,7 @@ public class RetryingHiveMetastore implements HiveMetastore
         }
         catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new TApplicationException("Interrupted while connecting");
+            throw new TTransportException(TTransportException.NOT_OPEN, "Interrupted while connecting");
         }
     }
 
@@ -182,61 +165,57 @@ public class RetryingHiveMetastore implements HiveMetastore
 
         int attempt = 0;
 
-        for (;;) {
-            attempt++;
-            try {
-                return callable.call();
-            }
-            catch (final Throwable t) {
-                TTransportException te = null;
-
-                if (t instanceof TTransportException) {
-                    te = (TTransportException) t;
+        try {
+            for (;;) {
+                attempt++;
+                try {
+                    return callable.call();
                 }
-                else if (t.getCause() instanceof TTransportException) {
-                    te = (TTransportException) t.getCause();
-                    log.debug("Found a TTransportException (%s) wrapped in a %s", te.getMessage(), t.getClass().getSimpleName());
-                }
+                catch (final Throwable t) {
+                    TTransportException te = null;
 
-                if (te != null) {
-                    final Duration now = Duration.nanosSince(startTime);
-                    if (attempt >= config.getMaxRetries() || now.compareTo(config.getRetryTimeout()) >= 0) {
-                        log.warn("Failed executing %s (attempt %s, timeout %sms), Exception: %s (%s)",
+                    if (t instanceof TTransportException) {
+                        te = (TTransportException) t;
+                    }
+                    else if (t.getCause() instanceof TTransportException) {
+                        te = (TTransportException) t.getCause();
+                        log.debug("Found a TTransportException (%s) wrapped in a %s", te.getMessage(), t.getClass().getSimpleName());
+                    }
+
+                    if (te != null) {
+                        final Duration now = Duration.nanosSince(startTime);
+                        if (attempt > config.getMaxRetries() || now.compareTo(config.getRetryTimeout()) >= 0) {
+                            log.warn("Failed executing %s (attempt %s, elapsed time %s), Exception: %s (%s)",
+                                apiName,
+                                attempt, now.toString(TimeUnit.MILLISECONDS),
+                                te.getClass().getSimpleName(), te.getMessage());
+
+                            Throwables.propagateIfInstanceOf(t, TException.class);
+                            throw Throwables.propagate(t);
+                        }
+                        log.debug("Retry executing %s (attempt %s, elapsed time %s), Exception: %s (%s)",
                             apiName,
                             attempt, now.toString(TimeUnit.MILLISECONDS),
                             te.getClass().getSimpleName(), te.getMessage());
 
+                        final HiveMetastore client = clientHolder.getAndSet(null);
+                        if (client != null) {
+                            client.close();
+                        }
+
+                        TimeUnit.MILLISECONDS.sleep(config.getRetrySleep().toMillis());
+                    }
+                    else {
+                        log.warn("Failed executing %s, Exception: %s (%s)", apiName, t.getClass().getSimpleName(), t.getMessage());
                         Throwables.propagateIfInstanceOf(t, TException.class);
                         throw Throwables.propagate(t);
                     }
-                    log.debug("Retry executing %s (attempt %s, timeout %sms), Exception: %s (%s)",
-                        apiName,
-                        attempt, now.toString(TimeUnit.MILLISECONDS),
-                        te.getClass().getSimpleName(), te.getMessage());
-
-                    final HiveMetastore client = clientHolder.getAndSet(null);
-                    if (client != null) {
-                        client.close();
-                    }
-
-                    retrySleep();
-                }
-                else {
-                    log.warn("Failed executing %s, Exception: %s (%s)", apiName, t.getClass().getSimpleName(), t.getMessage());
-                    Throwables.propagateIfInstanceOf(t, TException.class);
-                    throw Throwables.propagate(t);
                 }
             }
         }
-    }
-
-    private void retrySleep()
-    {
-        try {
-            TimeUnit.MILLISECONDS.sleep(config.getRetrySleep().toMillis());
-        }
-        catch (final InterruptedException ie) {
+        catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
+            throw new TTransportException(TTransportException.NOT_OPEN, "Interrupted while connecting");
         }
     }
 

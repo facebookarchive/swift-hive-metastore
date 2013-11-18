@@ -145,6 +145,12 @@
 
     <dependency>
       <groupId>io.airlift</groupId>
+      <artifactId>log-manager</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>io.airlift</groupId>
       <artifactId>bootstrap</artifactId>
       <scope>test</scope>
     </dependency>
@@ -385,6 +391,12 @@
       <dependency>
         <groupId>io.airlift</groupId>
         <artifactId>units</artifactId>
+        <version>${dep.airlift.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.airlift</groupId>
+        <artifactId>log-manager</artifactId>
         <version>${dep.airlift.version}</version>
       </dependency>
     </dependencies>
