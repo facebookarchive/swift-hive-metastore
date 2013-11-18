@@ -169,7 +169,9 @@ public class RetryingHiveMetastore implements HiveMetastore
             for (;;) {
                 attempt++;
                 try {
-                    return callable.call();
+                    final HiveMetastore client = connect();
+                    log.debug("Executing %s (connected to %s, attempt %s)", apiName, currentHostAndPort.get(), attempt);
+                    return callable.call(client);
                 }
                 catch (final Throwable t) {
                     TTransportException te = null;
@@ -219,16 +221,20 @@ public class RetryingHiveMetastore implements HiveMetastore
         }
     }
 
+    public interface CallableWithMetastore<T>
+    {
+        T call(HiveMetastore client) throws Exception;
+    }
+
     @Override
     public List<Partition> exchangePartition(final Map<String, String> partitionSpecs, final String sourceDb, final String sourceTableName, final String destDb, final String destTableName, final boolean overwrite) throws MetaException,
         NoSuchObjectException, InvalidObjectException,
         InvalidInputException, AlreadyExistsException, TException
     {
-        return withRetries("exchangePartition", new Callable<List<Partition>>() {
+        return withRetries("exchangePartition", new CallableWithMetastore<List<Partition>>() {
             @Override
-            public List<Partition> call() throws TException
+            public List<Partition> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.exchangePartition(partitionSpecs, sourceDb, sourceTableName, destDb, destTableName, overwrite);
             }
         });
@@ -239,11 +245,10 @@ public class RetryingHiveMetastore implements HiveMetastore
         MetaException, NoSuchObjectException,
         InvalidTableLinkDescriptionException, TException
     {
-        withRetries("createTableLink", new Callable<Void>() {
+        withRetries("createTableLink", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.createTableLink(dbName, targetDbName, targetTableName, owner, isStatic, linkProperties);
                 return null;
             }
@@ -253,11 +258,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void dropTableLink(final String dbName, final String targetDbName, final String targetTableName) throws NoSuchObjectException, MetaException, TException
     {
-        withRetries("dropTableLink", new Callable<Void>() {
+        withRetries("dropTableLink", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.dropTableLink(dbName, targetDbName, targetTableName);
                 return null;
             }
@@ -267,11 +271,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean existsTable(final String dbname, final String tblName) throws MetaException, TException
     {
-        return withRetries("existsTable", new Callable<Boolean>() {
+        return withRetries("existsTable", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.existsTable(dbname, tblName);
             }
         });
@@ -280,11 +283,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Table getTableLink(final String dbName, final String targetDbName, final String targetTableName) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getTableLink", new Callable<Table>() {
+        return withRetries("getTableLink", new CallableWithMetastore<Table>() {
             @Override
-            public Table call() throws TException
+            public Table call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getTableLink(dbName, targetDbName, targetTableName);
             }
         });
@@ -293,11 +295,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void alterTableLink(final String dbName, final String targetDbName, final String targetTableName, final Table newTbl) throws InvalidOperationException, MetaException, TException
     {
-        withRetries("alterTableLink", new Callable<Void>() {
+        withRetries("alterTableLink", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.alterTableLink(dbName, targetDbName, targetTableName, newTbl);
                 return null;
             }
@@ -307,11 +308,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void alterTableLinkProperties(final String dbName, final String targetDbName, final String targetTableName, final Map<String, String> updatedProperties) throws InvalidOperationException, MetaException, NoSuchObjectException, TException
     {
-        withRetries("alterTableLinkProperties", new Callable<Void>() {
+        withRetries("alterTableLinkProperties", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.alterTableLinkProperties(dbName, targetDbName, targetTableName, updatedProperties);
                 return null;
             }
@@ -321,11 +321,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Partition addTableLinkPartition(final String dbName, final String targetDbName, final String targetTableName, final String partitionName) throws InvalidObjectException, AlreadyExistsException, NoSuchObjectException, MetaException, TException
     {
-        return withRetries("addTableLinkPartition", new Callable<Partition>() {
+        return withRetries("addTableLinkPartition", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.addTableLinkPartition(dbName, targetDbName, targetTableName, partitionName);
             }
         });
@@ -334,11 +333,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean dropTableLinkPartition(final String dbName, final String targetDbName, final String targetTableName, final String partitionName) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("dropTableLinkPartition", new Callable<Boolean>() {
+        return withRetries("dropTableLinkPartition", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.dropTableLinkPartition(dbName, targetDbName, targetTableName, partitionName);
             }
         });
@@ -347,11 +345,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Partition getPartitionTemplate(final String dbName, final String tblName, final List<String> partVals) throws InvalidObjectException, MetaException, TException
     {
-        return withRetries("getPartitionTemplate", new Callable<Partition>() {
+        return withRetries("getPartitionTemplate", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionTemplate(dbName, tblName, partVals);
             }
         });
@@ -360,11 +357,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public int getTotalPartitions(final String dbName, final String tblName) throws MetaException, TException
     {
-        return withRetries("getTotalPartitions", new Callable<Integer>() {
+        return withRetries("getTotalPartitions", new CallableWithMetastore<Integer>() {
             @Override
-            public Integer call() throws TException
+            public Integer call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getTotalPartitions(dbName, tblName);
             }
         });
@@ -373,11 +369,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void createDatabase(final Database database) throws AlreadyExistsException, InvalidObjectException, MetaException, TException
     {
-        withRetries("createDatabase", new Callable<Void>() {
+        withRetries("createDatabase", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.createDatabase(database);
                 return null;
             }
@@ -387,11 +382,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Database getDatabase(final String name) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("getDatabase", new Callable<Database>() {
+        return withRetries("getDatabase", new CallableWithMetastore<Database>() {
             @Override
-            public Database call() throws TException
+            public Database call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getDatabase(name);
             }
         });
@@ -400,11 +394,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void dropDatabase(final String name, final boolean deleteData, final boolean cascade) throws NoSuchObjectException, InvalidOperationException, MetaException, TException
     {
-        withRetries("dropDatabase", new Callable<Void>() {
+        withRetries("dropDatabase", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.dropDatabase(name, deleteData, cascade);
                 return null;
             }
@@ -414,11 +407,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> getDatabases(final String pattern) throws MetaException, TException
     {
-        return withRetries("getDatabases", new Callable<List<String>>() {
+        return withRetries("getDatabases", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getDatabases(pattern);
             }
         });
@@ -427,11 +419,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> getAllDatabases() throws MetaException, TException
     {
-        return withRetries("getAllDatabases", new Callable<List<String>>() {
+        return withRetries("getAllDatabases", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getAllDatabases();
             }
         });
@@ -440,11 +431,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void alterDatabase(final String dbname, final Database db) throws MetaException, NoSuchObjectException, TException
     {
-        withRetries("alterDatabase", new Callable<Void>() {
+        withRetries("alterDatabase", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.alterDatabase(dbname, db);
                 return null;
             }
@@ -454,11 +444,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Type getType(final String name) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getType", new Callable<Type>() {
+        return withRetries("getType", new CallableWithMetastore<Type>() {
             @Override
-            public Type call() throws TException
+            public Type call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getType(name);
             }
         });
@@ -467,11 +456,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean createType(final Type type) throws AlreadyExistsException, InvalidObjectException, MetaException, TException
     {
-        return withRetries("createType", new Callable<Boolean>() {
+        return withRetries("createType", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.createType(type);
             }
         });
@@ -480,11 +468,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean dropType(final String type) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("dropType", new Callable<Boolean>() {
+        return withRetries("dropType", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.dropType(type);
             }
         });
@@ -493,11 +480,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Map<String, Type> getTypeAll(final String name) throws MetaException, TException
     {
-        return withRetries("getTypeAll", new Callable<Map<String, Type>>() {
+        return withRetries("getTypeAll", new CallableWithMetastore<Map<String, Type>>() {
             @Override
-            public Map<String, Type> call() throws TException
+            public Map<String, Type> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getTypeAll(name);
             }
         });
@@ -506,11 +492,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<FieldSchema> getFields(final String dbName, final String tableName) throws MetaException, UnknownTableException, UnknownDBException, TException
     {
-        return withRetries("getFields", new Callable<List<FieldSchema>>() {
+        return withRetries("getFields", new CallableWithMetastore<List<FieldSchema>>() {
             @Override
-            public List<FieldSchema> call() throws TException
+            public List<FieldSchema> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getFields(dbName, tableName);
             }
         });
@@ -519,11 +504,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<FieldSchema> getSchema(final String dbName, final String tableName) throws MetaException, UnknownTableException, UnknownDBException, TException
     {
-        return withRetries("getSchema", new Callable<List<FieldSchema>>() {
+        return withRetries("getSchema", new CallableWithMetastore<List<FieldSchema>>() {
             @Override
-            public List<FieldSchema> call() throws TException
+            public List<FieldSchema> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getSchema(dbName, tableName);
             }
         });
@@ -532,11 +516,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void createTable(final Table tbl) throws AlreadyExistsException, InvalidObjectException, MetaException, NoSuchObjectException, TException
     {
-        withRetries("createTable", new Callable<Void>() {
+        withRetries("createTable", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.createTable(tbl);
                 return null;
             }
@@ -546,11 +529,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void createTableWithEnvironmentContext(final Table tbl, final EnvironmentContext environmentContext) throws AlreadyExistsException, InvalidObjectException, MetaException, NoSuchObjectException, TException
     {
-        withRetries("createTableWithEnvironmentContext", new Callable<Void>() {
+        withRetries("createTableWithEnvironmentContext", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.createTableWithEnvironmentContext(tbl, environmentContext);
                 return null;
             }
@@ -560,11 +542,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void dropTable(final String dbname, final String name, final boolean deleteData) throws NoSuchObjectException, MetaException, TException
     {
-        withRetries("dropTable", new Callable<Void>() {
+        withRetries("dropTable", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.dropTable(dbname, name, deleteData);
                 return null;
             }
@@ -574,11 +555,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void dropTableWithEnvironmentContext(final String dbName, final String tblName, final boolean deleteData, final EnvironmentContext environmentContext) throws NoSuchObjectException, MetaException, TException
     {
-        withRetries("dropTableWithEnvironmentContext", new Callable<Void>() {
+        withRetries("dropTableWithEnvironmentContext", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.dropTableWithEnvironmentContext(dbName, tblName, deleteData, environmentContext);
                 return null;
             }
@@ -588,11 +568,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> getTables(final String dbName, final String pattern) throws MetaException, TException
     {
-        return withRetries("getTables", new Callable<List<String>>() {
+        return withRetries("getTables", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getTables(dbName, pattern);
             }
         });
@@ -601,11 +580,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> getAllTables(final String dbName) throws MetaException, TException
     {
-        return withRetries("getAllTables", new Callable<List<String>>() {
+        return withRetries("getAllTables", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getAllTables(dbName);
             }
         });
@@ -614,11 +592,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Table getTable(final String dbname, final String tblName) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getTable", new Callable<Table>() {
+        return withRetries("getTable", new CallableWithMetastore<Table>() {
             @Override
-            public Table call() throws TException
+            public Table call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getTable(dbname, tblName);
             }
         });
@@ -627,11 +604,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<Table> getTableObjectsByName(final String dbname, final List<String> tblNames) throws MetaException, InvalidOperationException, UnknownDBException, TException
     {
-        return withRetries("getTableObjectsByName", new Callable<List<Table>>() {
+        return withRetries("getTableObjectsByName", new CallableWithMetastore<List<Table>>() {
             @Override
-            public List<Table> call() throws TException
+            public List<Table> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getTableObjectsByName(dbname, tblNames);
             }
         });
@@ -640,11 +616,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> getTableNamesByFilter(final String dbname, final String filter, final short maxTables) throws MetaException, InvalidOperationException, UnknownDBException, TException
     {
-        return withRetries("getTableNamesByFilter", new Callable<List<String>>() {
+        return withRetries("getTableNamesByFilter", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getTableNamesByFilter(dbname, filter, maxTables);
             }
         });
@@ -653,11 +628,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void alterTable(final String dbname, final String tblName, final Table newTbl) throws InvalidOperationException, MetaException, TException
     {
-        withRetries("alterTable", new Callable<Void>() {
+        withRetries("alterTable", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.alterTable(dbname, tblName, newTbl);
                 return null;
             }
@@ -667,11 +641,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void alterTableWithEnvironmentContext(final String dbname, final String tblName, final Table newTbl, final EnvironmentContext environmentContext) throws InvalidOperationException, MetaException, TException
     {
-        withRetries("alterTableWithEnvironmentContext", new Callable<Void>() {
+        withRetries("alterTableWithEnvironmentContext", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.alterTableWithEnvironmentContext(dbname, tblName, newTbl, environmentContext);
                 return null;
             }
@@ -681,11 +654,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Partition addPartition(final Partition newPart) throws InvalidObjectException, AlreadyExistsException, MetaException, TException
     {
-        return withRetries("addPartition", new Callable<Partition>() {
+        return withRetries("addPartition", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.addPartition(newPart);
             }
         });
@@ -694,11 +666,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Partition addPartitionWithEnvironmentContext(final Partition newPart, final EnvironmentContext environmentContext) throws InvalidObjectException, AlreadyExistsException, MetaException, TException
     {
-        return withRetries("addPartitionWithEnvironmentContext", new Callable<Partition>() {
+        return withRetries("addPartitionWithEnvironmentContext", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.addPartitionWithEnvironmentContext(newPart, environmentContext);
             }
         });
@@ -707,11 +678,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public int addPartitions(final List<Partition> newParts) throws InvalidObjectException, AlreadyExistsException, MetaException, TException
     {
-        return withRetries("addPartitions", new Callable<Integer>() {
+        return withRetries("addPartitions", new CallableWithMetastore<Integer>() {
             @Override
-            public Integer call() throws TException
+            public Integer call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.addPartitions(newParts);
             }
         });
@@ -720,11 +690,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Partition appendPartition(final String dbName, final String tblName, final List<String> partVals) throws InvalidObjectException, AlreadyExistsException, MetaException, TException
     {
-        return withRetries("appendPartition", new Callable<Partition>() {
+        return withRetries("appendPartition", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.appendPartition(dbName, tblName, partVals);
             }
         });
@@ -734,11 +703,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     public Partition appendPartitionWithEnvironmentContext(final String dbName, final String tblName, final List<String> partVals, final EnvironmentContext environmentContext) throws InvalidObjectException, AlreadyExistsException, MetaException,
         TException
     {
-        return withRetries("appendPartitionWithEnvironmentContext", new Callable<Partition>() {
+        return withRetries("appendPartitionWithEnvironmentContext", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.appendPartitionWithEnvironmentContext(dbName, tblName, partVals, environmentContext);
             }
         });
@@ -747,11 +715,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Partition appendPartitionByName(final String dbName, final String tblName, final String partName) throws InvalidObjectException, AlreadyExistsException, MetaException, TException
     {
-        return withRetries("appendPartitionByName", new Callable<Partition>() {
+        return withRetries("appendPartitionByName", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.appendPartitionByName(dbName, tblName, partName);
             }
         });
@@ -761,11 +728,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     public Partition appendPartitionByNameWithEnvironmentContext(final String dbName, final String tblName, final String partName, final EnvironmentContext environmentContext) throws InvalidObjectException, AlreadyExistsException, MetaException,
         TException
     {
-        return withRetries("appendPartitionByNameWithEnvironmentContext", new Callable<Partition>() {
+        return withRetries("appendPartitionByNameWithEnvironmentContext", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.appendPartitionByNameWithEnvironmentContext(dbName, tblName, partName, environmentContext);
             }
         });
@@ -774,11 +740,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean dropPartition(final String dbName, final String tblName, final List<String> partVals, final boolean deleteData) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("dropPartition", new Callable<Boolean>() {
+        return withRetries("dropPartition", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.dropPartition(dbName, tblName, partVals, deleteData);
             }
         });
@@ -787,11 +752,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean dropPartitionWithEnvironmentContext(final String dbName, final String tblName, final List<String> partVals, final boolean deleteData, final EnvironmentContext environmentContext) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("dropPartitionWithEnvironmentContext", new Callable<Boolean>() {
+        return withRetries("dropPartitionWithEnvironmentContext", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.dropPartitionWithEnvironmentContext(dbName, tblName, partVals, deleteData, environmentContext);
             }
         });
@@ -800,11 +764,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean dropPartitionByName(final String dbName, final String tblName, final String partName, final boolean deleteData) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("dropPartitionByName", new Callable<Boolean>() {
+        return withRetries("dropPartitionByName", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.dropPartitionByName(dbName, tblName, partName, deleteData);
             }
         });
@@ -813,11 +776,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean dropPartitionByNameWithEnvironmentContext(final String dbName, final String tblName, final String partName, final boolean deleteData, final EnvironmentContext environmentContext) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("dropPartitionByNameWithEnvironmentContext", new Callable<Boolean>() {
+        return withRetries("dropPartitionByNameWithEnvironmentContext", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.dropPartitionByNameWithEnvironmentContext(dbName, tblName, partName, deleteData, environmentContext);
             }
         });
@@ -826,11 +788,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Partition getPartition(final String dbName, final String tblName, final List<String> partVals) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getPartition", new Callable<Partition>() {
+        return withRetries("getPartition", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartition(dbName, tblName, partVals);
             }
         });
@@ -839,11 +800,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Partition getPartitionWithAuth(final String dbName, final String tblName, final List<String> partVals, final String userName, final List<String> groupNames) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getPartitionWithAuth", new Callable<Partition>() {
+        return withRetries("getPartitionWithAuth", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionWithAuth(dbName, tblName, partVals, userName, groupNames);
             }
         });
@@ -852,11 +812,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Partition getPartitionByName(final String dbName, final String tblName, final String partName) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getPartitionByName", new Callable<Partition>() {
+        return withRetries("getPartitionByName", new CallableWithMetastore<Partition>() {
             @Override
-            public Partition call() throws TException
+            public Partition call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionByName(dbName, tblName, partName);
             }
         });
@@ -865,11 +824,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<Partition> getPartitions(final String dbName, final String tblName, final short maxParts) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("getPartitions", new Callable<List<Partition>>() {
+        return withRetries("getPartitions", new CallableWithMetastore<List<Partition>>() {
             @Override
-            public List<Partition> call() throws TException
+            public List<Partition> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitions(dbName, tblName, maxParts);
             }
         });
@@ -878,11 +836,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<Partition> getPartitionsWithAuth(final String dbName, final String tblName, final short maxParts, final String userName, final List<String> groupNames) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("getPartitionsWithAuth", new Callable<List<Partition>>() {
+        return withRetries("getPartitionsWithAuth", new CallableWithMetastore<List<Partition>>() {
             @Override
-            public List<Partition> call() throws TException
+            public List<Partition> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionsWithAuth(dbName, tblName, maxParts, userName, groupNames);
             }
         });
@@ -891,11 +848,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> getPartitionNames(final String dbName, final String tblName, final short maxParts) throws MetaException, TException
     {
-        return withRetries("getPartitionNames", new Callable<List<String>>() {
+        return withRetries("getPartitionNames", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionNames(dbName, tblName, maxParts);
             }
         });
@@ -904,11 +860,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<Partition> getPartitionsPs(final String dbName, final String tblName, final List<String> partVals, final short maxParts) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getPartitionsPs", new Callable<List<Partition>>() {
+        return withRetries("getPartitionsPs", new CallableWithMetastore<List<Partition>>() {
             @Override
-            public List<Partition> call() throws TException
+            public List<Partition> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionsPs(dbName, tblName, partVals, maxParts);
             }
         });
@@ -917,11 +872,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<Partition> getPartitionsPsWithAuth(final String dbName, final String tblName, final List<String> partVals, final short maxParts, final String userName, final List<String> groupNames) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("getPartitionsPsWithAuth", new Callable<List<Partition>>() {
+        return withRetries("getPartitionsPsWithAuth", new CallableWithMetastore<List<Partition>>() {
             @Override
-            public List<Partition> call() throws TException
+            public List<Partition> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionsPsWithAuth(dbName, tblName, partVals, maxParts, userName, groupNames);
             }
         });
@@ -930,11 +884,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> getPartitionNamesPs(final String dbName, final String tblName, final List<String> partVals, final short maxParts) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getPartitionNamesPs", new Callable<List<String>>() {
+        return withRetries("getPartitionNamesPs", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionNamesPs(dbName, tblName, partVals, maxParts);
             }
         });
@@ -943,11 +896,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<Partition> getPartitionsByFilter(final String dbName, final String tblName, final String filter, final short maxParts) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getPartitionsByFilter", new Callable<List<Partition>>() {
+        return withRetries("getPartitionsByFilter", new CallableWithMetastore<List<Partition>>() {
             @Override
-            public List<Partition> call() throws TException
+            public List<Partition> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionsByFilter(dbName, tblName, filter, maxParts);
             }
         });
@@ -956,11 +908,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<Partition> getPartitionsByNames(final String dbName, final String tblName, final List<String> names) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getPartitionsByNames", new Callable<List<Partition>>() {
+        return withRetries("getPartitionsByNames", new CallableWithMetastore<List<Partition>>() {
             @Override
-            public List<Partition> call() throws TException
+            public List<Partition> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionsByNames(dbName, tblName, names);
             }
         });
@@ -969,11 +920,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void alterPartition(final String dbName, final String tblName, final Partition newPart) throws InvalidOperationException, MetaException, TException
     {
-        withRetries("alterPartition", new Callable<Void>() {
+        withRetries("alterPartition", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.alterPartition(dbName, tblName, newPart);
                 return null;
             }
@@ -983,11 +933,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void alterPartitions(final String dbName, final String tblName, final List<Partition> newParts) throws InvalidOperationException, MetaException, TException
     {
-        withRetries("alterPartitions", new Callable<Void>() {
+        withRetries("alterPartitions", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.alterPartitions(dbName, tblName, newParts);
                 return null;
             }
@@ -997,11 +946,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void alterPartitionWithEnvironmentContext(final String dbName, final String tblName, final Partition newPart, final EnvironmentContext environmentContext) throws InvalidOperationException, MetaException, TException
     {
-        withRetries("alterPartitionWithEnvironmentContext", new Callable<Void>() {
+        withRetries("alterPartitionWithEnvironmentContext", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.alterPartitionWithEnvironmentContext(dbName, tblName, newPart, environmentContext);
                 return null;
             }
@@ -1011,11 +959,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void renamePartition(final String dbName, final String tblName, final List<String> partVals, final Partition newPart) throws InvalidOperationException, MetaException, TException
     {
-        withRetries("renamePartition", new Callable<Void>() {
+        withRetries("renamePartition", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.renamePartition(dbName, tblName, partVals, newPart);
                 return null;
             }
@@ -1025,11 +972,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean partitionNameHasValidCharacters(final List<String> partVals, final boolean throwException) throws MetaException, TException
     {
-        return withRetries("partitionNameHasValidCharacters", new Callable<Boolean>() {
+        return withRetries("partitionNameHasValidCharacters", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.partitionNameHasValidCharacters(partVals, throwException);
             }
         });
@@ -1038,11 +984,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public String getConfigValue(final String name, final String defaultValue) throws ConfigValSecurityException, TException
     {
-        return withRetries("getConfigValue", new Callable<String>() {
+        return withRetries("getConfigValue", new CallableWithMetastore<String>() {
             @Override
-            public String call() throws TException
+            public String call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getConfigValue(name, defaultValue);
             }
         });
@@ -1051,11 +996,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> partitionNameToVals(final String partName) throws MetaException, TException
     {
-        return withRetries("partitionNameToVals", new Callable<List<String>>() {
+        return withRetries("partitionNameToVals", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.partitionNameToVals(partName);
             }
         });
@@ -1064,11 +1008,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Map<String, String> partitionNameToSpec(final String partName) throws MetaException, TException
     {
-        return withRetries("partitionNameToSpec", new Callable<Map<String, String>>() {
+        return withRetries("partitionNameToSpec", new CallableWithMetastore<Map<String, String>>() {
             @Override
-            public Map<String, String> call() throws TException
+            public Map<String, String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.partitionNameToSpec(partName);
             }
         });
@@ -1079,11 +1022,10 @@ public class RetryingHiveMetastore implements HiveMetastore
         UnknownPartitionException,
         InvalidPartitionException, TException
     {
-        withRetries("markPartitionForEvent", new Callable<Void>() {
+        withRetries("markPartitionForEvent", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.markPartitionForEvent(dbName, tblName, partVals, eventType);
                 return null;
             }
@@ -1095,11 +1037,10 @@ public class RetryingHiveMetastore implements HiveMetastore
         UnknownPartitionException,
         InvalidPartitionException, TException
     {
-        return withRetries("isPartitionMarkedForEvent", new Callable<Boolean>() {
+        return withRetries("isPartitionMarkedForEvent", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.isPartitionMarkedForEvent(dbName, tblName, partVals, eventType);
             }
         });
@@ -1108,11 +1049,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Index addIndex(final Index newIndex, final Table indexTable) throws InvalidObjectException, AlreadyExistsException, MetaException, TException
     {
-        return withRetries("addIndex", new Callable<Index>() {
+        return withRetries("addIndex", new CallableWithMetastore<Index>() {
             @Override
-            public Index call() throws TException
+            public Index call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.addIndex(newIndex, indexTable);
             }
         });
@@ -1121,11 +1061,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void alterIndex(final String dbname, final String baseTblName, final String idxName, final Index newIdx) throws InvalidOperationException, MetaException, TException
     {
-        withRetries("alterIndex", new Callable<Void>() {
+        withRetries("alterIndex", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.alterIndex(dbname, baseTblName, idxName, newIdx);
                 return null;
             }
@@ -1135,11 +1074,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean dropIndexByName(final String dbName, final String tblName, final String indexName, final boolean deleteData) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("dropIndexByName", new Callable<Boolean>() {
+        return withRetries("dropIndexByName", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.dropIndexByName(dbName, tblName, indexName, deleteData);
             }
         });
@@ -1148,11 +1086,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public Index getIndexByName(final String dbName, final String tblName, final String indexName) throws MetaException, NoSuchObjectException, TException
     {
-        return withRetries("getIndexByName", new Callable<Index>() {
+        return withRetries("getIndexByName", new CallableWithMetastore<Index>() {
             @Override
-            public Index call() throws TException
+            public Index call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getIndexByName(dbName, tblName, indexName);
             }
         });
@@ -1161,11 +1098,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<Index> getIndexes(final String dbName, final String tblName, final short maxIndexes) throws NoSuchObjectException, MetaException, TException
     {
-        return withRetries("getIndexes", new Callable<List<Index>>() {
+        return withRetries("getIndexes", new CallableWithMetastore<List<Index>>() {
             @Override
-            public List<Index> call() throws TException
+            public List<Index> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getIndexes(dbName, tblName, maxIndexes);
             }
         });
@@ -1174,11 +1110,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> getIndexNames(final String dbName, final String tblName, final short maxIndexes) throws MetaException, TException
     {
-        return withRetries("getIndexNames", new Callable<List<String>>() {
+        return withRetries("getIndexNames", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getIndexNames(dbName, tblName, maxIndexes);
             }
         });
@@ -1187,11 +1122,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean updateTableColumnStatistics(final ColumnStatistics statsObj) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, TException
     {
-        return withRetries("updateTableColumnStatistics", new Callable<Boolean>() {
+        return withRetries("updateTableColumnStatistics", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.updateTableColumnStatistics(statsObj);
             }
         });
@@ -1200,11 +1134,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean updatePartitionColumnStatistics(final ColumnStatistics statsObj) throws NoSuchObjectException, InvalidObjectException, MetaException, InvalidInputException, TException
     {
-        return withRetries("updatePartitionColumnStatistics", new Callable<Boolean>() {
+        return withRetries("updatePartitionColumnStatistics", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.updatePartitionColumnStatistics(statsObj);
             }
         });
@@ -1213,11 +1146,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public ColumnStatistics getTableColumnStatistics(final String dbName, final String tblName, final String colName) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException
     {
-        return withRetries("getTableColumnStatistics", new Callable<ColumnStatistics>() {
+        return withRetries("getTableColumnStatistics", new CallableWithMetastore<ColumnStatistics>() {
             @Override
-            public ColumnStatistics call() throws TException
+            public ColumnStatistics call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getTableColumnStatistics(dbName, tblName, colName);
             }
         });
@@ -1226,11 +1158,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public ColumnStatistics getPartitionColumnStatistics(final String dbName, final String tblName, final String partName, final String colName) throws NoSuchObjectException, MetaException, InvalidInputException, InvalidObjectException, TException
     {
-        return withRetries("getPartitionColumnStatistics", new Callable<ColumnStatistics>() {
+        return withRetries("getPartitionColumnStatistics", new CallableWithMetastore<ColumnStatistics>() {
             @Override
-            public ColumnStatistics call() throws TException
+            public ColumnStatistics call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPartitionColumnStatistics(dbName, tblName, partName, colName);
             }
         });
@@ -1239,11 +1170,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean deletePartitionColumnStatistics(final String dbName, final String tblName, final String partName, final String colName) throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException, TException
     {
-        return withRetries("deletePartitionColumnStatistics", new Callable<Boolean>() {
+        return withRetries("deletePartitionColumnStatistics", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.deletePartitionColumnStatistics(dbName, tblName, partName, colName);
             }
         });
@@ -1252,11 +1182,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean deleteTableColumnStatistics(final String dbName, final String tblName, final String colName) throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException, TException
     {
-        return withRetries("deleteTableColumnStatistics", new Callable<Boolean>() {
+        return withRetries("deleteTableColumnStatistics", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.deleteTableColumnStatistics(dbName, tblName, colName);
             }
         });
@@ -1265,11 +1194,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean createRole(final Role role) throws MetaException, TException
     {
-        return withRetries("createRole", new Callable<Boolean>() {
+        return withRetries("createRole", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.createRole(role);
             }
         });
@@ -1278,11 +1206,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean dropRole(final String roleName) throws MetaException, TException
     {
-        return withRetries("dropRole", new Callable<Boolean>() {
+        return withRetries("dropRole", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.dropRole(roleName);
             }
         });
@@ -1291,11 +1218,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> getRoleNames() throws MetaException, TException
     {
-        return withRetries("getRoleNames", new Callable<List<String>>() {
+        return withRetries("getRoleNames", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getRoleNames();
             }
         });
@@ -1304,11 +1230,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean grantRole(final String roleName, final String principalName, final PrincipalType principalType, final String grantor, final PrincipalType grantorType, final boolean grantOption) throws MetaException, TException
     {
-        return withRetries("grantRole", new Callable<Boolean>() {
+        return withRetries("grantRole", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.grantRole(roleName, principalName, principalType, grantor, grantorType, grantOption);
             }
         });
@@ -1317,11 +1242,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean revokeRole(final String roleName, final String principalName, final PrincipalType principalType) throws MetaException, TException
     {
-        return withRetries("revokeRole", new Callable<Boolean>() {
+        return withRetries("revokeRole", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.revokeRole(roleName, principalName, principalType);
             }
         });
@@ -1330,11 +1254,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<Role> listRoles(final String principalName, final PrincipalType principalType) throws MetaException, TException
     {
-        return withRetries("listRoles", new Callable<List<Role>>() {
+        return withRetries("listRoles", new CallableWithMetastore<List<Role>>() {
             @Override
-            public List<Role> call() throws TException
+            public List<Role> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.listRoles(principalName, principalType);
             }
         });
@@ -1343,11 +1266,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public PrincipalPrivilegeSet getPrivilegeSet(final HiveObjectRef hiveObject, final String userName, final List<String> groupNames) throws MetaException, TException
     {
-        return withRetries("getPrivilegeSet", new Callable<PrincipalPrivilegeSet>() {
+        return withRetries("getPrivilegeSet", new CallableWithMetastore<PrincipalPrivilegeSet>() {
             @Override
-            public PrincipalPrivilegeSet call() throws TException
+            public PrincipalPrivilegeSet call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getPrivilegeSet(hiveObject, userName, groupNames);
             }
         });
@@ -1356,11 +1278,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<HiveObjectPrivilege> listPrivileges(final String principalName, final PrincipalType principalType, final HiveObjectRef hiveObject) throws MetaException, TException
     {
-        return withRetries("listPrivileges", new Callable<List<HiveObjectPrivilege>>() {
+        return withRetries("listPrivileges", new CallableWithMetastore<List<HiveObjectPrivilege>>() {
             @Override
-            public List<HiveObjectPrivilege> call() throws TException
+            public List<HiveObjectPrivilege> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.listPrivileges(principalName, principalType, hiveObject);
             }
         });
@@ -1369,11 +1290,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean grantPrivileges(final PrivilegeBag privileges) throws MetaException, TException
     {
-        return withRetries("grantPrivileges", new Callable<Boolean>() {
+        return withRetries("grantPrivileges", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.grantPrivileges(privileges);
             }
         });
@@ -1382,11 +1302,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public boolean revokePrivileges(final PrivilegeBag privileges) throws MetaException, TException
     {
-        return withRetries("revokePrivileges", new Callable<Boolean>() {
+        return withRetries("revokePrivileges", new CallableWithMetastore<Boolean>() {
             @Override
-            public Boolean call() throws TException
+            public Boolean call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.revokePrivileges(privileges);
             }
         });
@@ -1395,11 +1314,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public List<String> setUgi(final String userName, final List<String> groupNames) throws MetaException, TException
     {
-        return withRetries("setUgi", new Callable<List<String>>() {
+        return withRetries("setUgi", new CallableWithMetastore<List<String>>() {
             @Override
-            public List<String> call() throws TException
+            public List<String> call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.setUgi(userName, groupNames);
             }
         });
@@ -1408,11 +1326,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public String getDelegationToken(final String tokenOwner, final String renewerKerberosPrincipalName) throws MetaException, TException
     {
-        return withRetries("getDelegationToken", new Callable<String>() {
+        return withRetries("getDelegationToken", new CallableWithMetastore<String>() {
             @Override
-            public String call() throws TException
+            public String call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.getDelegationToken(tokenOwner, renewerKerberosPrincipalName);
             }
         });
@@ -1421,11 +1338,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public long renewDelegationToken(final String tokenStrForm) throws MetaException, TException
     {
-        return withRetries("renewDelegationToken", new Callable<Long>() {
+        return withRetries("renewDelegationToken", new CallableWithMetastore<Long>() {
             @Override
-            public Long call() throws TException
+            public Long call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 return client.renewDelegationToken(tokenStrForm);
             }
         });
@@ -1434,11 +1350,10 @@ public class RetryingHiveMetastore implements HiveMetastore
     @Override
     public void cancelDelegationToken(final String tokenStrForm) throws MetaException, TException
     {
-        withRetries("cancelDelegationToken", new Callable<Void>() {
+        withRetries("cancelDelegationToken", new CallableWithMetastore<Void>() {
             @Override
-            public Void call() throws TException
+            public Void call(final HiveMetastore client) throws TException
             {
-                final HiveMetastore client = connect();
                 client.cancelDelegationToken(tokenStrForm);
                 return null;
             }
