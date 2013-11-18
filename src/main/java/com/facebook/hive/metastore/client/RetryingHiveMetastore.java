@@ -59,14 +59,18 @@ import org.apache.thrift.transport.TTransportException;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @NotThreadSafe
@@ -79,30 +83,55 @@ public class RetryingHiveMetastore implements HiveMetastore
 
     private final AtomicBoolean closed = new AtomicBoolean();
     private final AtomicReference<HiveMetastore> clientHolder = new AtomicReference<>();
-    private final NiftyClientConnector<? extends NiftyClientChannel> clientConnector;
+    private final AtomicReference<HostAndPort> currentHostAndPort = new AtomicReference<>();
 
-    public RetryingHiveMetastore(final HostAndPort hostAndPort,
-                                 final HiveMetastoreClientConfig config,
-                                 final ThriftClient<HiveMetastore> thriftClient)
+    private final LinkedList<HostAndPort> hostAndPorts;
+
+    RetryingHiveMetastore(final Set<HostAndPort> hostAndPorts,
+                          final HiveMetastoreClientConfig config,
+                          final ThriftClient<HiveMetastore> thriftClient)
     {
-        checkNotNull(hostAndPort, "hostAndPort is null");
+        checkNotNull(hostAndPorts, "hostAndPort is null");
+        checkArgument(!hostAndPorts.isEmpty(), "at least one hostAndPort must be present!");
         this.config = checkNotNull(config, "config is null");
         this.thriftClient = checkNotNull(thriftClient, "thriftClient is null");
 
-        this.clientConnector = config.isFramed()
-            ? new FramedClientConnector(hostAndPort)
-            : new UnframedClientConnector(hostAndPort);
+        final List<HostAndPort> shuffleHostAndPorts = new ArrayList<>(hostAndPorts);
+        Collections.shuffle(shuffleHostAndPorts);
+        this.hostAndPorts = new LinkedList<>(shuffleHostAndPorts);
+
+    }
+
+    private synchronized HostAndPort getNextHostAndPort()
+    {
+        final HostAndPort hostAndPort;
+        if (hostAndPorts.size() == 1) {
+            hostAndPort = hostAndPorts.getFirst();
+        }
+        else {
+            hostAndPort = hostAndPorts.removeFirst();
+            hostAndPorts.addLast(hostAndPort);
+        }
+
+        currentHostAndPort.set(hostAndPort);
+        return hostAndPort;
     }
 
     @Override
     public void close()
     {
-        if (!closed.compareAndSet(false, true)) {
-            final HiveMetastore client = clientHolder.getAndSet(null);
-            if (client != null) {
-                client.close();
-            }
+        if (closed.compareAndSet(false, true)) {
+            internalClose();
         }
+    }
+
+    private void internalClose()
+    {
+        final HiveMetastore client = clientHolder.getAndSet(null);
+        if (client != null) {
+            client.close();
+        }
+        currentHostAndPort.set(null);
     }
 
     @Override
@@ -116,6 +145,7 @@ public class RetryingHiveMetastore implements HiveMetastore
     }
 
     @VisibleForTesting
+    @SuppressWarnings("PMD.PreserveStackTrace")
     HiveMetastore connect()
         throws TException
     {
@@ -124,38 +154,36 @@ public class RetryingHiveMetastore implements HiveMetastore
         }
 
         HiveMetastore client = clientHolder.get();
+
         while (client == null) {
-            client = connectClient();
+            try {
+                final HostAndPort hostAndPort = getNextHostAndPort();
+                final NiftyClientConnector<? extends NiftyClientChannel> clientConnector = config.isFramed()
+                    ? new FramedClientConnector(hostAndPort)
+                    : new UnframedClientConnector(hostAndPort);
+
+                client = thriftClient.open(clientConnector).get();
+                if (!clientHolder.compareAndSet(null, client)) {
+                    client.close();
+                    client = clientHolder.get();
+                }
+            }
+            catch (final ExecutionException e) {
+                final Throwable t = e.getCause();
+                Throwables.propagateIfInstanceOf(t, TTransportException.class);
+                throw Throwables.propagate(t);
+            }
+            catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new TTransportException(TTransportException.NOT_OPEN, "Interrupted while connecting");
+            }
         }
+
         return client;
     }
 
-    private HiveMetastore connectClient()
-        throws TException
-    {
-        HiveMetastore client = null;
-
-        try {
-            client = thriftClient.open(clientConnector).get();
-            if (!clientHolder.compareAndSet(null, client)) {
-                client.close();
-                client = clientHolder.get();
-            }
-
-            return client;
-        }
-        catch (final ExecutionException e) {
-            final Throwable t = e.getCause();
-            Throwables.propagateIfInstanceOf(t, TTransportException.class);
-            throw Throwables.propagate(t);
-        }
-        catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new TTransportException(TTransportException.NOT_OPEN, "Interrupted while connecting");
-        }
-    }
-
-    private <T> T withRetries(final String apiName, final Callable<T> callable)
+    @SuppressWarnings("PMD.PreserveStackTrace")
+    private <T> T withRetries(final String apiName, final CallableWithMetastore<T> callable)
         throws TException
     {
         checkNotNull(apiName, "apiName is null");
@@ -187,23 +215,20 @@ public class RetryingHiveMetastore implements HiveMetastore
                     if (te != null) {
                         final Duration now = Duration.nanosSince(startTime);
                         if (attempt > config.getMaxRetries() || now.compareTo(config.getRetryTimeout()) >= 0) {
-                            log.warn("Failed executing %s (attempt %s, elapsed time %s), Exception: %s (%s)",
-                                apiName,
+                            log.warn("Failed executing %s (last host %s, attempt %s, elapsed time %s), Exception: %s (%s)",
+                                apiName, currentHostAndPort.get(),
                                 attempt, now.toString(TimeUnit.MILLISECONDS),
                                 te.getClass().getSimpleName(), te.getMessage());
 
                             Throwables.propagateIfInstanceOf(t, TException.class);
                             throw Throwables.propagate(t);
                         }
-                        log.debug("Retry executing %s (attempt %s, elapsed time %s), Exception: %s (%s)",
-                            apiName,
+                        log.debug("Retry executing %s (last host: %s, attempt %s, elapsed time %s), Exception: %s (%s)",
+                            apiName, currentHostAndPort.get(),
                             attempt, now.toString(TimeUnit.MILLISECONDS),
                             te.getClass().getSimpleName(), te.getMessage());
 
-                        final HiveMetastore client = clientHolder.getAndSet(null);
-                        if (client != null) {
-                            client.close();
-                        }
+                        internalClose();
 
                         TimeUnit.MILLISECONDS.sleep(config.getRetrySleep().toMillis());
                     }

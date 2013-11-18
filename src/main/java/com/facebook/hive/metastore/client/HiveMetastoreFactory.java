@@ -17,7 +17,7 @@ package com.facebook.hive.metastore.client;
 
 import com.google.common.net.HostAndPort;
 
-import org.apache.thrift.transport.TTransportException;
+import java.util.Set;
 
 public interface HiveMetastoreFactory
     extends HiveMetastoreProvider<HiveMetastore>
@@ -25,16 +25,28 @@ public interface HiveMetastoreFactory
     /**
      * Returns a client connected to the store using the default configuration settings.
      */
-    HiveMetastore getDefaultClient() throws InterruptedException, TTransportException;
+    HiveMetastore getDefaultClient();
 
     /**
-     * Return a client connected to the store described in the the supplied {@link HostAndPort} element. All
+     * Return a client connected to the store described in the supplied {@link HostAndPort} element. All
      * additional settings are taken from the default configuration settings.
      */
-    HiveMetastore getClientForHost(HostAndPort hostAndPort) throws InterruptedException, TTransportException;
+    HiveMetastore getClientForHost(HostAndPort hostAndPort);
 
     /**
      * Return a client connected to the store described in the {@link HiveMetastoreClientConfig} object.
      */
-    HiveMetastore getClientForHost(HiveMetastoreClientConfig config) throws InterruptedException, TTransportException;
+    HiveMetastore getClientForHost(HiveMetastoreClientConfig config);
+
+    /**
+     * Return a client connected to one of the stores described in the supplied set of {@link HostAndPort} elements.
+     * All additional settings are taken from the default configuration settings. When retrying, another store is used.
+     */
+    HiveMetastore getClientForHost(Set<HostAndPort> hostAndPorts);
+
+    /**
+     * Return a client connected to one of the stores described in the supplied set of {@link HostAndPort} elements.
+     * All additional settings are taken from the configuration supplied. When retrying, another store is used.
+     */
+    HiveMetastore getClientForHost(Set<HostAndPort> hostAndPorts, HiveMetastoreClientConfig config);
 }

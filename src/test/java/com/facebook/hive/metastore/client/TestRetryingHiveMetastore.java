@@ -21,6 +21,8 @@ import com.facebook.swift.codec.guice.ThriftCodecModule;
 import com.facebook.swift.service.ThriftClientConfig;
 import com.facebook.swift.service.ThriftClientManager;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.net.HostAndPort;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
@@ -181,5 +183,52 @@ public class TestRetryingHiveMetastore
             }
         }
     }
+
+    @Test
+    public void testLetsShuffleOne() throws Exception
+    {
+        final int port = NetUtils.findUnusedPort();
+
+        final ImmutableSet.Builder<HostAndPort> builder = ImmutableSet.builder();
+        builder.add(HostAndPort.fromParts("localhost", port));
+
+        for (int i = 0; i < 3; i++) {
+            builder.add(HostAndPort.fromParts("localhost", NetUtils.findUnusedPort()));
+        }
+
+        runner.schedule(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    startService(port);
+                }
+                catch (Exception e) {
+                    fail(e.getMessage());
+                }
+            }
+        }, 10, TimeUnit.SECONDS);
+
+        final HiveMetastoreClientConfig metastoreConfig = new HiveMetastoreClientConfig()
+            .setMaxRetries(10)
+            .setRetrySleep(new Duration(3, TimeUnit.SECONDS))
+            .setRetryTimeout(new Duration(45, TimeUnit.SECONDS));
+
+        try (final ThriftClientManager clientManager = new ThriftClientManager()) {
+            final ThriftClientConfig clientConfig = new ThriftClientConfig();
+            final HiveMetastoreFactory factory = new SimpleHiveMetastoreFactory(clientManager, clientConfig, metastoreConfig);
+
+            try (final HiveMetastore metastore = factory.getClientForHost(builder.build())) {
+                assertFalse(metastore.isConnected());
+
+                final Table table = metastore.getTable("hello", "world");
+                assertNotNull(table);
+                assertEquals("hello", table.getDbName());
+                assertEquals("world", table.getTableName());
+
+                assertTrue(metastore.isConnected());
+            }
+        }
+    }
+
 }
 
