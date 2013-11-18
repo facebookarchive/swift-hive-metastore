@@ -15,17 +15,14 @@
  */
 package com.facebook.hive.metastore.client;
 
-import static com.facebook.swift.service.guice.ThriftClientBinder.thriftClientBinder;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static io.airlift.configuration.ConfigurationModule.bindConfig;
-
 import com.google.inject.Binder;
-import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
 import com.google.inject.throwingproviders.ThrowingProviderBinder;
 
-import org.apache.thrift.transport.TTransportException;
+import static com.facebook.swift.service.guice.ThriftClientBinder.thriftClientBinder;
+
+import static io.airlift.configuration.ConfigurationModule.bindConfig;
 
 public class HiveMetastoreClientModule
     implements Module
@@ -37,25 +34,6 @@ public class HiveMetastoreClientModule
         thriftClientBinder(binder).bindThriftClient(HiveMetastore.class);
 
         binder.bind(HiveMetastoreFactory.class).to(GuiceHiveMetastoreFactory.class).in(Scopes.SINGLETON);
-        binder.bind(HiveMetastoreClientProvider.class).in(Scopes.SINGLETON);
-        ThrowingProviderBinder.create(binder).bind(HiveMetastoreProvider.class, HiveMetastore.class).to(HiveMetastoreClientProvider.class);
-    }
-
-    public static class HiveMetastoreClientProvider
-        implements HiveMetastoreProvider<HiveMetastore>
-    {
-        private final HiveMetastoreFactory metastoreFactory;
-
-        @Inject
-        HiveMetastoreClientProvider(final HiveMetastoreFactory metastoreFactory)
-        {
-            this.metastoreFactory = checkNotNull(metastoreFactory, "metastoreFactory is null");
-        }
-
-        @Override
-        public HiveMetastore get() throws InterruptedException, TTransportException
-        {
-            return metastoreFactory.getDefaultClient();
-        }
+        ThrowingProviderBinder.create(binder).bind(HiveMetastoreProvider.class, HiveMetastore.class).to(HiveMetastoreFactory.class);
     }
 }

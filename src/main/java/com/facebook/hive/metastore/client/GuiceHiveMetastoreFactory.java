@@ -15,21 +15,13 @@
  */
 package com.facebook.hive.metastore.client;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import com.facebook.nifty.client.FramedClientConnector;
-import com.facebook.nifty.client.NiftyClientChannel;
-import com.facebook.nifty.client.NiftyClientConnector;
-import com.facebook.nifty.client.UnframedClientConnector;
 import com.facebook.swift.service.ThriftClient;
-import com.google.common.base.Throwables;
 import com.google.common.net.HostAndPort;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.Inject;
 
 import org.apache.thrift.transport.TTransportException;
 
-import java.util.concurrent.ExecutionException;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class GuiceHiveMetastoreFactory
     implements HiveMetastoreFactory
@@ -46,37 +38,26 @@ public class GuiceHiveMetastoreFactory
     }
 
     @Override
-    public ListenableFuture<HiveMetastore> getDefaultClientAsFuture()
-    {
-        return getClientForHostAsFuture(hiveMetastoreClientConfig.getHostAndPort(), hiveMetastoreClientConfig.isFramed());
-    }
-
-    @Override
-    public ListenableFuture<HiveMetastore> getClientForHostAsFuture(final HostAndPort hostAndPort, final boolean framed)
-    {
-        final NiftyClientConnector<? extends NiftyClientChannel> clientConnector = framed
-            ? new FramedClientConnector(hostAndPort)
-            : new UnframedClientConnector(hostAndPort);
-
-        return thriftClient.open(clientConnector);
-    }
-
-    @Override
     public HiveMetastore getDefaultClient() throws InterruptedException, TTransportException
     {
-        return getClientForHost(hiveMetastoreClientConfig.getHostAndPort(), hiveMetastoreClientConfig.isFramed());
+        return new RetryingHiveMetastore(hiveMetastoreClientConfig.getHostAndPort(), hiveMetastoreClientConfig, thriftClient);
     }
 
     @Override
-    public HiveMetastore getClientForHost(final HostAndPort hostAndPort, final boolean framed) throws InterruptedException, TTransportException
+    public HiveMetastore getClientForHost(final HostAndPort hostAndPort) throws InterruptedException, TTransportException
     {
-        try {
-            return getClientForHostAsFuture(hostAndPort, framed).get();
-        }
-        catch (final ExecutionException e) {
-            final Throwable t = e.getCause();
-            Throwables.propagateIfInstanceOf(t, TTransportException.class);
-            throw Throwables.propagate(t);
-        }
+        return new RetryingHiveMetastore(hostAndPort, hiveMetastoreClientConfig, thriftClient);
+    }
+
+    @Override
+    public HiveMetastore getClientForHost(final HiveMetastoreClientConfig config) throws InterruptedException, TTransportException
+    {
+        return new RetryingHiveMetastore(config.getHostAndPort(), config, thriftClient);
+    }
+
+    @Override
+    public HiveMetastore get() throws InterruptedException, TTransportException
+    {
+        return getDefaultClient();
     }
 }

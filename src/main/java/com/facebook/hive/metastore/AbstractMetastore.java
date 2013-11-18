@@ -57,6 +57,12 @@ public abstract class AbstractMetastore implements HiveMetastore
     }
 
     @Override
+    public boolean isConnected()
+    {
+        return false;
+    }
+
+    @Override
     public Table getTable(final String dbname, final String tblName) throws MetaException, NoSuchObjectException, TException
     {
         throw new UnsupportedOperationException();

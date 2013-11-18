@@ -15,12 +15,6 @@
  */
 package com.facebook.hive.metastore.client;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
-
-import com.facebook.hive.metastore.client.HiveMetastoreClientModule.HiveMetastoreClientProvider;
 import com.facebook.hive.metastore.client.testing.DummyHiveMetastoreServerModule;
 import com.facebook.hive.metastore.client.testing.NetUtils;
 import com.facebook.swift.codec.guice.ThriftCodecModule;
@@ -29,18 +23,22 @@ import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
-import org.apache.hadoop.hive.metastore.api.Table;
-import org.apache.thrift.transport.TTransportException;
-import org.junit.Test;
-
 import io.airlift.bootstrap.Bootstrap;
 
+import org.apache.hadoop.hive.metastore.api.Table;
+import org.junit.Test;
+
 import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class TestHiveMetastoreClientModule
 {
     @Inject
-    public HiveMetastoreClientProvider metastoreProvider = null;
+    public HiveMetastoreProvider<HiveMetastore> metastoreProvider = null;
 
     @Test
     public void testSimple() throws Exception
@@ -76,7 +74,9 @@ public class TestHiveMetastoreClientModule
     {
         final String port = Integer.toString(NetUtils.findUnusedPort());
 
-        final Map<String, String> properties = ImmutableMap.of("hive-metastore.port", port);
+        final Map<String, String> properties = ImmutableMap.of(
+            "hive-metastore.port", port,
+            "hive-metastore.max-retries", "0");
 
         final Injector inj = new Bootstrap(new HiveMetastoreClientModule(),
                                            new ThriftClientModule(),
@@ -87,17 +87,9 @@ public class TestHiveMetastoreClientModule
 
         inj.injectMembers(this);
 
-        HiveMetastore metastore = null;
-
-        try {
-            metastore = metastoreProvider.get();
-            fail();
+        try (HiveMetastore metastore = metastoreProvider.get()) {
+            assertFalse(metastore.isConnected());
         }
-        catch (TTransportException e) {
-
-        }
-
-        assertNull(metastore);
 
         final Map<String, String> serverProps = ImmutableMap.of("thrift.port", port);
 
@@ -109,11 +101,15 @@ public class TestHiveMetastoreClientModule
             .strictConfig()
             .initialize();
 
-        metastore = metastoreProvider.get();
+        try (HiveMetastore metastore = metastoreProvider.get()) {
+            assertFalse(metastore.isConnected());
 
-        final Table table = metastore.getTable("hello", "world");
-        assertNotNull(table);
-        assertEquals("hello", table.getDbName());
-        assertEquals("world", table.getTableName());
+            final Table table = metastore.getTable("hello", "world");
+            assertNotNull(table);
+            assertEquals("hello", table.getDbName());
+            assertEquals("world", table.getTableName());
+
+            assertTrue(metastore.isConnected());
+        }
     }
 }

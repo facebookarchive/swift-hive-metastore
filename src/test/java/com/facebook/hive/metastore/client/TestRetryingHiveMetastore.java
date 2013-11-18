@@ -26,21 +26,40 @@ import com.google.inject.Injector;
 
 import io.airlift.bootstrap.Bootstrap;
 import io.airlift.bootstrap.LifeCycleManager;
+import io.airlift.log.Logging;
+import io.airlift.log.Logging.Level;
+import io.airlift.units.Duration;
 
 import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-public class TestHiveMetastoreClient
+public class TestRetryingHiveMetastore
 {
     @Inject
     private LifeCycleManager lifecycleManager = null;
+
+    private final ScheduledExecutorService runner = Executors.newScheduledThreadPool(5);
+
+    @Before
+    public void setUp()
+    {
+        Logging.initialize()
+            .setLevel("com.facebook", Level.DEBUG);
+    }
 
     private void startService(int port) throws Exception
     {
@@ -59,55 +78,108 @@ public class TestHiveMetastoreClient
     @After
     public void tearDown() throws Exception
     {
-        assertNotNull(lifecycleManager);
-        lifecycleManager.stop();
+        if (lifecycleManager != null) {
+            lifecycleManager.stop();
+        }
+
+        runner.shutdownNow();
     }
 
     @Test
-    public void testSimple() throws Exception
+    public void testNonExistent() throws Exception
     {
         final int port = NetUtils.findUnusedPort();
 
-        startService(port);
+        final HiveMetastoreClientConfig metastoreConfig = new HiveMetastoreClientConfig()
+            .setPort(port)
+            .setMaxRetries(5)
+            .setRetrySleep(new Duration(1, TimeUnit.SECONDS))
+            .setRetryTimeout(new Duration(30, TimeUnit.SECONDS));
 
-        final HiveMetastoreClientConfig metastoreConfig = new HiveMetastoreClientConfig().setPort(port);
         try (final ThriftClientManager clientManager = new ThriftClientManager()) {
             final ThriftClientConfig clientConfig = new ThriftClientConfig();
             final HiveMetastoreFactory factory = new SimpleHiveMetastoreFactory(clientManager, clientConfig, metastoreConfig);
 
             try (final HiveMetastore metastore = factory.getDefaultClient()) {
-                final Table table = metastore.getTable("hello", "world");
-                assertNotNull(table);
-                assertEquals("hello", table.getDbName());
-                assertEquals("world", table.getTableName());
+                assertFalse(metastore.isConnected());
+                metastore.getTable("hello", "world");
+                fail();
+            }
+            catch (TTransportException te) {
+                assertEquals(TTransportException.UNKNOWN, te.getType());
             }
         }
     }
 
     @Test
-    public void testLateConnectIsOk() throws Exception
+    public void testExisting() throws Exception
     {
         final int port = NetUtils.findUnusedPort();
 
-        final HiveMetastoreClientConfig metastoreConfig = new HiveMetastoreClientConfig().setPort(port);
-        final ThriftClientConfig clientConfig = new ThriftClientConfig();
+        startService(port);
+
+        final HiveMetastoreClientConfig metastoreConfig = new HiveMetastoreClientConfig()
+            .setPort(port)
+            .setMaxRetries(5)
+            .setRetrySleep(new Duration(1, TimeUnit.SECONDS))
+            .setRetryTimeout(new Duration(30, TimeUnit.SECONDS));
+
         try (final ThriftClientManager clientManager = new ThriftClientManager()) {
+            final ThriftClientConfig clientConfig = new ThriftClientConfig();
             final HiveMetastoreFactory factory = new SimpleHiveMetastoreFactory(clientManager, clientConfig, metastoreConfig);
 
             try (final HiveMetastore metastore = factory.getDefaultClient()) {
                 assertFalse(metastore.isConnected());
-            }
 
-            startService(port);
-
-            try (final HiveMetastore metastore = factory.getDefaultClient()) {
                 final Table table = metastore.getTable("hello", "world");
                 assertNotNull(table);
                 assertEquals("hello", table.getDbName());
                 assertEquals("world", table.getTableName());
+
+                assertTrue(metastore.isConnected());
             }
         }
     }
 
+    @Test
+    public void testLate() throws Exception
+    {
+        final int port = NetUtils.findUnusedPort();
+
+
+        runner.schedule(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    startService(port);
+                }
+                catch (Exception e) {
+                    fail(e.getMessage());
+                }
+            }
+        }, 10, TimeUnit.SECONDS);
+
+        final HiveMetastoreClientConfig metastoreConfig = new HiveMetastoreClientConfig()
+            .setPort(port)
+            .setMaxRetries(5)
+            .setRetrySleep(new Duration(5, TimeUnit.SECONDS))
+            .setRetryTimeout(new Duration(30, TimeUnit.SECONDS));
+
+        try (final ThriftClientManager clientManager = new ThriftClientManager()) {
+            final ThriftClientConfig clientConfig = new ThriftClientConfig();
+            final HiveMetastoreFactory factory = new SimpleHiveMetastoreFactory(clientManager, clientConfig, metastoreConfig);
+
+            try (final HiveMetastore metastore = factory.getDefaultClient()) {
+                assertFalse(metastore.isConnected());
+
+                final Table table = metastore.getTable("hello", "world");
+                assertNotNull(table);
+                assertEquals("hello", table.getDbName());
+                assertEquals("world", table.getTableName());
+
+                assertTrue(metastore.isConnected());
+            }
+        }
+    }
 }
 
