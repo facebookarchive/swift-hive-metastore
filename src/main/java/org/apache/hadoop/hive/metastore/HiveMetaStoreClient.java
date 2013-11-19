@@ -231,23 +231,8 @@ public class HiveMetaStoreClient implements IMetaStoreClient, Closeable {
 
                     final HiveMetastoreFactory factory = new SimpleHiveMetastoreFactory(thriftClientManager, clientConfig, metastoreConfig);
 
-                    try {
-                        client = closer.register(ThriftHiveMetastore.Client.forHiveMetastore(factory.getDefaultClient()));
-                        isConnected = true;
-                    }
-                    catch (TTransportException e) {
-                        tte = e;
-                        if (logger.isDebugEnabled()) {
-                            logger.warn(e, "Failed to connect to the MetaStore Server...");
-                        } else {
-                            // Don't print full exception trace if DEBUG is not on.
-                            logger.warn("Failed to connect to the MetaStore Server...");
-                        }
-                    }
-                    catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break; // stop trying to connect
-                    }
+                    client = closer.register(ThriftHiveMetastore.Client.forHiveMetastore(factory.getDefaultClient()));
+                    isConnected = true;
 
                     if (isConnected && conf.getBoolVar(ConfVars.METASTORE_EXECUTE_SET_UGI)) {
                         // Call set_ugi, only in unsecure mode.
