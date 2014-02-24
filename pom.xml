@@ -23,7 +23,7 @@
   <parent>
     <groupId>com.facebook</groupId>
     <artifactId>facebook-oss-pom</artifactId>
-    <version>8</version>
+    <version>10-SNAPSHOT</version>
   </parent>
 
   <groupId>com.facebook</groupId>
@@ -48,8 +48,8 @@
 
   <properties>
     <dep.airlift.version>0.83</dep.airlift.version>
-    <dep.swift.version>0.10.0</dep.swift.version>
-    <dep.nifty.version>0.10.0</dep.nifty.version>
+    <dep.swift.version>0.12.0-SNAPSHOT</dep.swift.version>
+    <dep.nifty.version>0.12.0-SNAPSHOT</dep.nifty.version>
     <dep.hive.version>0.11.0</dep.hive.version>
   </properties>
 
